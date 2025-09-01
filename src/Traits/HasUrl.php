@@ -15,6 +15,8 @@ use RayzenAI\UrlManager\Models\Url;
  * 2. Model MUST implement webUrlPath() method that returns the desired URL path
  * 3. Model MAY implement ogTags() method for Open Graph meta tags
  * 4. Model MAY implement getSeoMetadata() for additional SEO metadata
+ * 5. Model MAY implement getViewCountColumn() to track view counts
+ * 6. Model MAY implement recordVisit($userId, $metadata) for custom visit tracking
  * 
  * Example implementation:
  * ```php
@@ -35,6 +37,11 @@ use RayzenAI\UrlManager\Models\Url;
  *             'image' => $this->image_url,
  *         ];
  *     }
+ * 
+ *     public function getViewCountColumn(): ?string
+ *     {
+ *         return 'view_count'; // Return null if no view counting needed
+ *     }
  * }
  * ```
  */
@@ -54,7 +61,8 @@ trait HasUrl
 
         // Update URL when model is updated
         static::updated(function ($model) {
-            if ($model->url) {
+            // Check if URL relationship is loaded to avoid lazy loading issues
+            if ($model->relationLoaded('url') && $model->url) {
                 // Update URL status based on model's active status
                 if ($model->wasChanged('is_active')) {
                     $model->updateUrlStatus();
@@ -68,15 +76,25 @@ trait HasUrl
                 // Touch last modified
                 $model->url->touchLastModified();
             } elseif ($model->shouldHaveUrl()) {
-                // Create URL if it doesn't exist but should
-                $model->createUrl();
+                // Load the URL relationship if we need to check it
+                $model->load('url');
+                if (!$model->url) {
+                    // Create URL if it doesn't exist but should
+                    $model->createUrl();
+                }
             }
         });
 
         // Delete URL when model is deleted
         static::deleted(function ($model) {
-            if ($model->url) {
+            // Check if URL relationship is loaded to avoid lazy loading issues
+            if ($model->relationLoaded('url') && $model->url) {
                 $model->url->delete();
+            } else {
+                // If relationship not loaded, query directly to avoid lazy loading
+                Url::where('urable_type', get_class($model))
+                    ->where('urable_id', $model->id)
+                    ->delete();
             }
         });
     }

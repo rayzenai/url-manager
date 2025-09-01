@@ -141,7 +141,7 @@ class Url extends Model
     /**
      * Create a redirect from old slug to new slug
      */
-    public static function createRedirect(string $oldSlug, string $newSlug, int $code = null): self
+    public static function createRedirect(string $oldSlug, string $newSlug, ?int $code = null): self
     {
         $code = $code ?? config('url-manager.default_redirect_code', 301);
         

@@ -54,7 +54,16 @@ class UrlController extends Controller
 
         // Record visit if tracking is enabled
         if (config('url-manager.track_visits', true)) {
-            $url->recordVisit();
+            // Dispatch job to record visit asynchronously
+            \RayzenAI\UrlManager\Jobs\RecordUrlVisit::dispatch(
+                $url,
+                auth()->id(),
+                [
+                    'ip' => request()->ip(),
+                    'user_agent' => request()->userAgent(),
+                    'referer' => request()->header('referer'),
+                ]
+            );
         }
 
         // Fire event for custom handling
