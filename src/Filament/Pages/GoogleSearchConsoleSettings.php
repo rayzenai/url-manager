@@ -2,15 +2,27 @@
 
 namespace RayzenAI\UrlManager\Filament\Pages;
 
+use Filament\Actions\Action;
 use Filament\Forms;
+use Filament\Forms\Concerns\InteractsWithForms;
+use Filament\Forms\Contracts\HasForms;
 use Filament\Forms\Form;
+use Filament\Infolists\Components\TextEntry;
+use Filament\Schemas\Schema;
 use Filament\Pages\Page;
 use Filament\Notifications\Notification;
+use Filament\Schemas\Components\Actions;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Illuminate\Support\Facades\File;
 use RayzenAI\UrlManager\Services\GoogleSearchConsoleService;
 
-class GoogleSearchConsoleSettings extends Page
+class GoogleSearchConsoleSettings extends Page implements HasForms
 {
+    use InteractsWithForms;
+    
+    protected static ?string $slug = 'google-search-console-settings';
     protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-magnifying-glass';
     protected static ?string $navigationLabel = 'Google Search Console';
     protected static string | \UnitEnum | null $navigationGroup = 'Settings';
@@ -31,17 +43,17 @@ class GoogleSearchConsoleSettings extends Page
         ]);
     }
     
-    public function form(Form $form): Form
+    public function form(Schema $form): Schema
     {
         return $form
             ->schema([
-                Forms\Components\Section::make('Google Search Console Configuration')
+                Section::make('Google Search Console Configuration')
                     ->description('Configure Google Search Console API integration for automatic sitemap submission.')
                     ->schema([
                         Forms\Components\Toggle::make('enabled')
                             ->label('Enable Google Search Console Integration')
                             ->helperText('Enable API integration for sitemap submission and search analytics')
-                            ->liveJs(),
+                            ->live(),
                             
                         Forms\Components\TextInput::make('site_url')
                             ->label('Site URL')
@@ -52,7 +64,7 @@ class GoogleSearchConsoleSettings extends Page
                             ->default(url('/')),
                     ]),
                     
-                Forms\Components\Section::make('Service Account Configuration')
+                Section::make('Service Account Configuration')
                     ->description('Upload your Google Service Account JSON credentials file.')
                     ->schema([
                         Forms\Components\FileUpload::make('credentials_upload')
@@ -61,7 +73,7 @@ class GoogleSearchConsoleSettings extends Page
                             ->directory('google-credentials')
                             ->visibility('private')
                             ->helperText('Upload your service account JSON file (will be stored securely)')
-                            ->afterStateUpdated(function ($state, Forms\Set $set) {
+                            ->afterStateUpdated(function ($state, Set $set) {
                                 if ($state) {
                                     $path = storage_path('app/' . $state);
                                     $set('credentials_path', $path);
@@ -91,51 +103,51 @@ class GoogleSearchConsoleSettings extends Page
                             ->disabled()
                             ->dehydrated(),
                             
-                        Forms\Components\Placeholder::make('setup_instructions')
+                        TextEntry::make('setup_instructions')
                             ->label('Setup Instructions')
-                            ->content(fn () => view('url-manager::filament.partials.service-account-instructions')),
+                            ->state(fn () => view('url-manager::filament.partials.service-account-instructions')),
                     ])
-                    ->visible(fn (Forms\Get $get) => $get('enabled')),
+                    ->visible(fn (Get $get) => $get('enabled')),
                     
-                Forms\Components\Section::make('Actions')
+                Section::make('Actions')
                     ->schema([
-                        Forms\Components\Actions::make([
-                            Forms\Components\Actions\Action::make('test_connection')
+                        Actions::make([
+                            Action::make('test_connection')
                                 ->label('Test Connection')
                                 ->icon('heroicon-o-signal')
                                 ->action(function () {
                                     $this->testConnection();
                                 })
-                                ->visible(fn (Forms\Get $get) => 
+                                ->visible(fn (Get $get) => 
                                     $get('enabled') && 
                                     $get('credentials_path')
                                 ),
                                 
-                            Forms\Components\Actions\Action::make('submit_sitemap')
+                            Action::make('submit_sitemap')
                                 ->label('Submit Sitemap Now')
                                 ->icon('heroicon-o-paper-airplane')
                                 ->requiresConfirmation()
                                 ->action(function () {
                                     $this->submitSitemap();
                                 })
-                                ->visible(fn (Forms\Get $get) => 
+                                ->visible(fn (Get $get) => 
                                     $get('enabled') && 
                                     $get('credentials_path')
                                 ),
                                 
-                            Forms\Components\Actions\Action::make('view_sitemaps')
+                            Action::make('view_sitemaps')
                                 ->label('View Submitted Sitemaps')
                                 ->icon('heroicon-o-list-bullet')
                                 ->action(function () {
                                     $this->viewSitemaps();
                                 })
-                                ->visible(fn (Forms\Get $get) => 
+                                ->visible(fn (Get $get) => 
                                     $get('enabled') && 
                                     $get('credentials_path')
                                 ),
                         ]),
                     ])
-                    ->visible(fn (Forms\Get $get) => $get('enabled')),
+                    ->visible(fn (Get $get) => $get('enabled')),
             ])
             ->statePath('data');
     }

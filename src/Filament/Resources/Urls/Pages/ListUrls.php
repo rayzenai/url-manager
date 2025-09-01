@@ -89,6 +89,12 @@ class ListUrls extends ListRecords
                 ->color('success')
                 ->visible(fn () => config('url-manager.sitemap.enabled', true)),
             
+            Action::make('google-search-console-settings')
+                ->label('Search Console Settings')
+                ->icon(Heroicon::OutlinedCog6Tooth)
+                ->url('/admin/google-search-console-settings')
+                ->color('gray'),
+            
             Action::make('submit-to-google')
                 ->label('Submit to Search Engines')
                 ->icon(Heroicon::OutlinedGlobeAlt)
