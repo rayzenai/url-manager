@@ -8,6 +8,7 @@ use Filament\Resources\Pages\ListRecords;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Artisan;
 use RayzenAI\UrlManager\Filament\Resources\Urls\UrlResource;
+use RayzenAI\UrlManager\Services\GoogleSearchConsoleService;
 
 class ListUrls extends ListRecords
 {
@@ -86,6 +87,52 @@ class ListUrls extends ListRecords
                     }
                 })
                 ->color('success')
+                ->visible(fn () => config('url-manager.sitemap.enabled', true)),
+            
+            Action::make('submit-to-google')
+                ->label('Submit to Search Engines')
+                ->icon(Heroicon::OutlinedGlobeAlt)
+                ->requiresConfirmation()
+                ->modalHeading('Submit Sitemap to Search Engines')
+                ->modalDescription('This will notify Google and Bing about your updated sitemap.')
+                ->modalSubmitActionLabel('Submit')
+                ->action(function () {
+                    // First, generate the latest sitemap
+                    if (class_exists(\RayzenAI\UrlManager\Commands\GenerateSitemap::class)) {
+                        Artisan::call('sitemap:generate');
+                    }
+                    
+                    // Submit to search engines
+                    $result = GoogleSearchConsoleService::submitToAllSearchEngines();
+                    
+                    if ($result['success']) {
+                        \Filament\Notifications\Notification::make()
+                            ->title('Sitemap submitted successfully!')
+                            ->body('Your sitemap has been submitted to Google and Bing.')
+                            ->success()
+                            ->send();
+                    } else {
+                        // Show details about which submissions succeeded/failed
+                        $message = 'Submission results:' . PHP_EOL;
+                        
+                        if (isset($result['results']['google'])) {
+                            $googleStatus = $result['results']['google']['success'] ? '✅' : '❌';
+                            $message .= "Google: {$googleStatus}" . PHP_EOL;
+                        }
+                        
+                        if (isset($result['results']['bing'])) {
+                            $bingStatus = $result['results']['bing']['success'] ? '✅' : '❌';
+                            $message .= "Bing: {$bingStatus}";
+                        }
+                        
+                        \Filament\Notifications\Notification::make()
+                            ->title('Partial submission')
+                            ->body($message)
+                            ->warning()
+                            ->send();
+                    }
+                })
+                ->color('info')
                 ->visible(fn () => config('url-manager.sitemap.enabled', true)),
             
             CreateAction::make(),

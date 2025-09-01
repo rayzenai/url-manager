@@ -4,6 +4,7 @@ namespace RayzenAI\UrlManager;
 
 use RayzenAI\UrlManager\Commands\GenerateSitemap;
 use RayzenAI\UrlManager\Commands\GenerateUrlsForModels;
+use RayzenAI\UrlManager\Commands\SubmitSitemapToGoogle;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
 
@@ -20,6 +21,7 @@ class UrlManagerServiceProvider extends PackageServiceProvider
             ->hasCommands([
                 GenerateSitemap::class,
                 GenerateUrlsForModels::class,
+                SubmitSitemapToGoogle::class,
             ]);
     }
 }
