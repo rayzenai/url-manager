@@ -100,14 +100,19 @@ class UrlController extends Controller
             abort(404);
         }
 
+        // Normalize the redirect target by removing leading slash
+        // This ensures consistency even if data was entered manually
+        $normalizedTarget = ltrim($url->redirect_to, '/');
+
         // Find the target URL
-        $targetUrl = Url::where('slug', $url->redirect_to)
+        $targetUrl = Url::where('slug', $normalizedTarget)
             ->where('status', Url::STATUS_ACTIVE)
             ->first();
 
         if (! $targetUrl) {
             // If no URL record exists, try direct redirect
-            return redirect($url->redirect_to, $url->redirect_code);
+            // Add leading slash for proper URL formation
+            return redirect('/' . $normalizedTarget, $url->redirect_code);
         }
 
         return redirect($targetUrl->getAbsoluteUrl(), $url->redirect_code);

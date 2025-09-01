@@ -145,6 +145,10 @@ class Url extends Model
     {
         $code = $code ?? config('url-manager.default_redirect_code', 301);
         
+        // Normalize both slugs by removing leading slashes
+        $oldSlug = ltrim($oldSlug, '/');
+        $newSlug = ltrim($newSlug, '/');
+        
         // Check if a URL with this slug already exists
         $existingUrl = self::where('slug', $oldSlug)->first();
         
