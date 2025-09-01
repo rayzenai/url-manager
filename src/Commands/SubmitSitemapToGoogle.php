@@ -22,7 +22,7 @@ class SubmitSitemapToGoogle extends Command
      *
      * @var string
      */
-    protected $description = 'Submit sitemap to search engines (Google and Bing)';
+    protected $description = 'Submit sitemap to Google Search Console via API (Bing requires manual submission)';
 
     /**
      * Execute the console command.
@@ -61,12 +61,15 @@ class SubmitSitemapToGoogle extends Command
     {
         $this->info('Submitting to Google...');
         
-        $result = GoogleSearchConsoleService::pingGoogleSitemap($sitemapUrl);
+        $result = GoogleSearchConsoleService::submitGoogleSitemap($sitemapUrl);
         
         if ($result['success']) {
-            $this->info('✅ Successfully submitted to Google!');
+            $this->info('✅ Successfully submitted to Google via API!');
         } else {
-            $this->error('❌ Failed to submit to Google: ' . ($result['message'] ?? 'Unknown error'));
+            $this->error('❌ ' . ($result['message'] ?? 'Unknown error'));
+            if (isset($result['info'])) {
+                $this->warn('ℹ️  ' . $result['info']);
+            }
         }
     }
     
@@ -77,12 +80,15 @@ class SubmitSitemapToGoogle extends Command
     {
         $this->info('Submitting to Bing...');
         
-        $result = GoogleSearchConsoleService::pingBingSitemap($sitemapUrl);
+        $result = GoogleSearchConsoleService::submitBingSitemap($sitemapUrl);
         
         if ($result['success']) {
             $this->info('✅ Successfully submitted to Bing!');
         } else {
-            $this->error('❌ Failed to submit to Bing: ' . ($result['message'] ?? 'Unknown error'));
+            $this->error('❌ ' . ($result['message'] ?? 'Unknown error'));
+            if (isset($result['info'])) {
+                $this->warn('ℹ️  ' . $result['info']);
+            }
         }
     }
     
@@ -92,32 +98,72 @@ class SubmitSitemapToGoogle extends Command
     private function submitToAll(string $sitemapUrl): void
     {
         $this->info('Submitting to all search engines...');
+        $this->line("Sitemap URL: {$sitemapUrl}");
+        $this->newLine();
         
         $result = GoogleSearchConsoleService::submitToAllSearchEngines($sitemapUrl);
         
+        // Track successful submissions
+        $successCount = 0;
+        $totalCount = 0;
+        
         // Show results for each search engine
         if (isset($result['results']['google'])) {
+            $totalCount++;
+            $this->line('📍 Google Search Console:');
+            
             if ($result['results']['google']['success']) {
-                $this->info('✅ Google: Successfully submitted');
+                $successCount++;
+                $this->info('   ✅ Successfully submitted via ' . ($result['results']['google']['method'] ?? 'API'));
             } else {
-                $this->error('❌ Google: ' . ($result['results']['google']['message'] ?? 'Failed'));
+                $this->error('   ❌ Submission failed');
+                $this->line('   Reason: ' . ($result['results']['google']['message'] ?? 'Unknown error'));
+                
+                // Provide helpful info if available
+                if (isset($result['results']['google']['info'])) {
+                    $this->warn('   ℹ️  ' . $result['results']['google']['info']);
+                }
             }
-        }
-        
-        if (isset($result['results']['bing'])) {
-            if ($result['results']['bing']['success']) {
-                $this->info('✅ Bing: Successfully submitted');
-            } else {
-                $this->error('❌ Bing: ' . ($result['results']['bing']['message'] ?? 'Failed'));
-            }
+        } else {
+            $this->warn('📍 Google: Not attempted (no response)');
         }
         
         $this->newLine();
         
-        if ($result['success']) {
-            $this->info('🎉 All submissions completed successfully!');
+        if (isset($result['results']['bing'])) {
+            $totalCount++;
+            $this->line('📍 Bing Webmaster Tools:');
+            
+            if ($result['results']['bing']['success']) {
+                $successCount++;
+                $this->info('   ✅ Successfully submitted via ' . ($result['results']['bing']['method'] ?? 'ping'));
+            } else {
+                $this->error('   ❌ Submission failed');
+                $this->line('   Reason: ' . ($result['results']['bing']['message'] ?? 'Unknown error'));
+                
+                // Provide helpful info if available
+                if (isset($result['results']['bing']['info'])) {
+                    $this->warn('   ℹ️  ' . $result['results']['bing']['info']);
+                }
+            }
         } else {
-            $this->warn('⚠️ Some submissions failed. Check the details above.');
+            $this->warn('📍 Bing: Not attempted (no response)');
+        }
+        
+        $this->newLine();
+        $this->line('─────────────────────────────────');
+        
+        if ($successCount === $totalCount && $totalCount > 0) {
+            $this->info("🎉 All submissions completed successfully! ({$successCount}/{$totalCount})");
+        } elseif ($successCount > 0) {
+            $this->warn("⚠️  Partial submission: {$successCount} of {$totalCount} search engines succeeded");
+            $this->line('Please review the errors above and try again.');
+        } else {
+            $this->error("❌ All submissions failed ({$successCount}/{$totalCount})");
+            $this->line('Please check the error details above and ensure:');
+            $this->line('  • Your internet connection is working');
+            $this->line('  • API credentials are properly configured (for Google)');
+            $this->line('  • The sitemap URL is accessible: ' . $sitemapUrl);
         }
     }
 }

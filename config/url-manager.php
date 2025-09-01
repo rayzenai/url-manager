@@ -115,4 +115,19 @@ return [
         'navigation_icon' => 'heroicon-o-link',
         'navigation_sort' => 100,
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Google Search Console Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Configure Google Search Console API integration using Service Account
+    |
+    */
+    'google_search_console' => [
+        'enabled' => env('GOOGLE_SEARCH_CONSOLE_ENABLED', false),
+        'credentials_path' => env('GOOGLE_APPLICATION_CREDENTIALS', null),
+        'service_account_email' => env('GOOGLE_SERVICE_ACCOUNT_EMAIL', null),
+        'site_url' => env('GOOGLE_SEARCH_CONSOLE_SITE_URL', null),
+    ],
 ];

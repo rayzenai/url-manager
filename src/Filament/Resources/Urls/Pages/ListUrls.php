@@ -113,22 +113,54 @@ class ListUrls extends ListRecords
                             ->send();
                     } else {
                         // Show details about which submissions succeeded/failed
-                        $message = 'Submission results:' . PHP_EOL;
+                        $successCount = 0;
+                        $totalCount = 0;
+                        $messages = [];
                         
                         if (isset($result['results']['google'])) {
-                            $googleStatus = $result['results']['google']['success'] ? '✅' : '❌';
-                            $message .= "Google: {$googleStatus}" . PHP_EOL;
+                            $totalCount++;
+                            if ($result['results']['google']['success']) {
+                                $successCount++;
+                                $messages[] = "✅ Google: Successfully submitted";
+                            } else {
+                                $errorMsg = $result['results']['google']['message'] ?? 'Unknown error';
+                                $messages[] = "❌ Google: {$errorMsg}";
+                                
+                                // Add additional info if available
+                                if (isset($result['results']['google']['info'])) {
+                                    $messages[] = "ℹ️ " . $result['results']['google']['info'];
+                                }
+                            }
                         }
                         
                         if (isset($result['results']['bing'])) {
-                            $bingStatus = $result['results']['bing']['success'] ? '✅' : '❌';
-                            $message .= "Bing: {$bingStatus}";
+                            $totalCount++;
+                            if ($result['results']['bing']['success']) {
+                                $successCount++;
+                                $messages[] = "✅ Bing: Successfully submitted";
+                            } else {
+                                $errorMsg = $result['results']['bing']['message'] ?? 'Unknown error';
+                                $messages[] = "❌ Bing: {$errorMsg}";
+                            }
+                        }
+                        
+                        // Determine the notification type and title
+                        if ($successCount === 0) {
+                            $title = 'All submissions failed';
+                            $type = 'danger';
+                        } elseif ($successCount === $totalCount) {
+                            $title = 'All submissions successful';
+                            $type = 'success';
+                        } else {
+                            $title = "Partial submission ({$successCount}/{$totalCount} succeeded)";
+                            $type = 'warning';
                         }
                         
                         \Filament\Notifications\Notification::make()
-                            ->title('Partial submission')
-                            ->body($message)
-                            ->warning()
+                            ->title($title)
+                            ->body(implode("\n", $messages))
+                            ->{$type}()
+                            ->duration(15000) // Show for longer so user can read the details
                             ->send();
                     }
                 })

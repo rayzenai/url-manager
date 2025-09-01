@@ -4,6 +4,7 @@ namespace RayzenAI\UrlManager;
 
 use Filament\Contracts\Plugin;
 use Filament\Panel;
+use RayzenAI\UrlManager\Filament\Pages\GoogleSearchConsoleSettings;
 use RayzenAI\UrlManager\Filament\Resources\Urls\UrlResource;
 use RayzenAI\UrlManager\Filament\Widgets\TopUrlsTable;
 use RayzenAI\UrlManager\Filament\Widgets\UrlStatsOverview;
@@ -19,6 +20,10 @@ class UrlManagerPlugin implements Plugin
     {
         $panel->resources([
             UrlResource::class,
+        ]);
+        
+        $panel->pages([
+            GoogleSearchConsoleSettings::class,
         ]);
         
         if (config('url-manager.filament.widgets', true)) {

@@ -169,6 +169,115 @@ php artisan sitemap:generate
 
 For large sites (>10,000 URLs), the package automatically creates multiple sitemap files with an index.
 
+### Submitting Sitemaps to Search Engines
+
+Since Google deprecated the ping endpoint in June 2023 and Bing has also discontinued their ping service, API credentials are now required for automated sitemap submission.
+
+#### Setting up Google Search Console API
+
+**Prerequisites**:
+- A verified property in [Google Search Console](https://search.google.com/search-console)
+- A Google Cloud Project with billing enabled (API has free tier)
+
+##### Using Service Account Authentication
+
+1. **Create a Google Cloud Project**:
+   - Go to [Google Cloud Console](https://console.cloud.google.com)
+   - Create a new project or select an existing one
+   - Enable these APIs:
+     - "Google Search Console API" 
+     - "Search Console API" (if available)
+   - Note: The "Indexing API" is separate and not needed for sitemap submission
+
+2. **Create a Service Account**:
+   - Navigate to "IAM & Admin" > "Service Accounts"
+   - Click "Create Service Account"
+   - Give it a name like "sitemap-submitter"
+   - Click "Create and Continue"
+   - Skip the optional role assignment (click "Continue")
+   - Click "Done"
+   - Find your new service account in the list and click on it
+   - Go to the "Keys" tab
+   - Click "Add Key" > "Create New Key"
+   - Select "JSON" format
+   - Click "Create" to download the JSON credentials file
+   - **Keep this file secure** - it contains credentials for API access
+
+3. **Add Service Account to Search Console**:
+   - Go to [Google Search Console](https://search.google.com/search-console)
+   - Select your property
+   - Go to Settings > Users and permissions
+   - Click "Add user"
+   - Enter the service account email (found in the JSON file, looks like `service-account@project.iam.gserviceaccount.com`)
+   - Select "Owner" permission level
+   - Click "Add"
+
+4. **Configure in Admin Panel**:
+   - Navigate to the Google Search Console settings page in your Filament admin panel
+   - Toggle "Enable Google Search Console Integration" to ON
+   - Enter your site URL (must match exactly with Search Console property)
+   - **Upload the JSON credentials file**:
+     - Click the file upload field
+     - Select the JSON file you downloaded from Google Cloud Console
+     - The file will be automatically uploaded and stored securely in `storage/app/google-credentials/`
+     - The full path will be saved to your `.env` file as `GOOGLE_APPLICATION_CREDENTIALS`
+   - The service account email will be automatically extracted and displayed
+   - Click "Save Settings"
+   - Use "Test Connection" to verify the setup is working
+   
+   **Alternative Manual Setup** (if you prefer to place the file manually):
+   - Save the JSON file anywhere on your server (e.g., `storage/app/google-service-account.json`)
+   - Add to your `.env` file:
+     ```
+     GOOGLE_SEARCH_CONSOLE_ENABLED=true
+     GOOGLE_SEARCH_CONSOLE_SITE_URL=https://yoursite.com
+     GOOGLE_APPLICATION_CREDENTIALS=/full/path/to/your/service-account.json
+     ```
+   - The file should NOT be in a publicly accessible directory
+
+#### Submitting Sitemaps
+
+Once configured, you can submit sitemaps in multiple ways:
+
+1. **Via Admin Panel**: 
+   - Go to URLs management page in Filament
+   - Click "Submit to Search Engines" button
+
+2. **Via Command Line**:
+   ```bash
+   php artisan sitemap:submit
+   ```
+
+3. **Programmatically**:
+   ```php
+   use RayzenAI\UrlManager\Services\GoogleSearchConsoleService;
+   
+   // Submit to Google only
+   $result = GoogleSearchConsoleService::submitGoogleSitemap();
+   
+   // Submit to all search engines (Google + Bing note)
+   $result = GoogleSearchConsoleService::submitToAllSearchEngines();
+   ```
+
+#### Troubleshooting Google Search Console
+
+**Service Account Issues**:
+- **"API not configured" error**: Ensure you've enabled the Google Search Console API in your Google Cloud Project
+- **"Site not verified" error**: Make sure the service account email is added as a user in Search Console with "Owner" permissions
+- **"Invalid credentials" error**: Check that the JSON file path is correct and the file is readable by the web server
+- **403 Forbidden errors**: The service account may not have proper permissions. Verify it's added to Search Console with "Owner" role
+- **File upload not working**: Ensure the `storage/app/google-credentials` directory exists and is writable
+
+**General Issues**:
+- **"Invalid site URL" error**: The site URL must match exactly with how it's registered in Search Console (including www/non-www, https/http)
+- **No sitemaps found**: The site may not have any sitemaps submitted yet. Use "Submit Sitemap Now" button to submit
+- **Rate limiting**: Google Search Console API has quotas. Check your Google Cloud Console for usage limits
+- **Connection test passes but submission fails**: Check that sitemap.xml exists and is accessible at the expected URL
+
+#### Note on Bing
+
+Bing has also discontinued their ping endpoint. Sitemaps must be manually submitted through [Bing Webmaster Tools](https://www.bing.com/webmasters).
+
 ### Accessing URLs in Your Application
 
 ```php

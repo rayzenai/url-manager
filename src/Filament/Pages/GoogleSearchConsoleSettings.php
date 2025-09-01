@@ -1,0 +1,284 @@
+<?php
+
+namespace RayzenAI\UrlManager\Filament\Pages;
+
+use Filament\Forms;
+use Filament\Forms\Form;
+use Filament\Pages\Page;
+use Filament\Notifications\Notification;
+use Illuminate\Support\Facades\File;
+use RayzenAI\UrlManager\Services\GoogleSearchConsoleService;
+
+class GoogleSearchConsoleSettings extends Page
+{
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-magnifying-glass';
+    protected static ?string $navigationLabel = 'Google Search Console';
+    protected static string | \UnitEnum | null $navigationGroup = 'Settings';
+    protected static ?int $navigationSort = 100;
+    protected string $view = 'url-manager::filament.pages.google-search-console-settings';
+    
+    public ?array $data = [];
+    
+    public function mount(): void
+    {
+        $config = config('url-manager.google_search_console');
+        
+        $this->form->fill([
+            'enabled' => $config['enabled'] ?? false,
+            'site_url' => $config['site_url'] ?? url('/'),
+            'credentials_path' => $config['credentials_path'] ?? '',
+            'service_account_email' => $config['service_account_email'] ?? '',
+        ]);
+    }
+    
+    public function form(Form $form): Form
+    {
+        return $form
+            ->schema([
+                Forms\Components\Section::make('Google Search Console Configuration')
+                    ->description('Configure Google Search Console API integration for automatic sitemap submission.')
+                    ->schema([
+                        Forms\Components\Toggle::make('enabled')
+                            ->label('Enable Google Search Console Integration')
+                            ->helperText('Enable API integration for sitemap submission and search analytics')
+                            ->liveJs(),
+                            
+                        Forms\Components\TextInput::make('site_url')
+                            ->label('Site URL')
+                            ->placeholder('https://example.com')
+                            ->helperText('The URL of your site as registered in Google Search Console (must match exactly)')
+                            ->required()
+                            ->url()
+                            ->default(url('/')),
+                    ]),
+                    
+                Forms\Components\Section::make('Service Account Configuration')
+                    ->description('Upload your Google Service Account JSON credentials file.')
+                    ->schema([
+                        Forms\Components\FileUpload::make('credentials_upload')
+                            ->label('Service Account JSON File')
+                            ->acceptedFileTypes(['application/json'])
+                            ->directory('google-credentials')
+                            ->visibility('private')
+                            ->helperText('Upload your service account JSON file (will be stored securely)')
+                            ->afterStateUpdated(function ($state, Forms\Set $set) {
+                                if ($state) {
+                                    $path = storage_path('app/' . $state);
+                                    $set('credentials_path', $path);
+                                    
+                                    // Try to extract service account email from JSON
+                                    if (File::exists($path)) {
+                                        $json = json_decode(File::get($path), true);
+                                        if (isset($json['client_email'])) {
+                                            $set('service_account_email', $json['client_email']);
+                                        }
+                                    }
+                                }
+                            }),
+                            
+                        Forms\Components\TextInput::make('credentials_path')
+                            ->label('Credentials File Path')
+                            ->placeholder('/path/to/service-account.json')
+                            ->helperText('Full path to your Google Service Account JSON credentials file')
+                            ->disabled()
+                            ->dehydrated(),
+                            
+                        Forms\Components\TextInput::make('service_account_email')
+                            ->label('Service Account Email')
+                            ->email()
+                            ->placeholder('service-account@project.iam.gserviceaccount.com')
+                            ->helperText('The email address of your service account (extracted from JSON)')
+                            ->disabled()
+                            ->dehydrated(),
+                            
+                        Forms\Components\Placeholder::make('setup_instructions')
+                            ->label('Setup Instructions')
+                            ->content(fn () => view('url-manager::filament.partials.service-account-instructions')),
+                    ])
+                    ->visible(fn (Forms\Get $get) => $get('enabled')),
+                    
+                Forms\Components\Section::make('Actions')
+                    ->schema([
+                        Forms\Components\Actions::make([
+                            Forms\Components\Actions\Action::make('test_connection')
+                                ->label('Test Connection')
+                                ->icon('heroicon-o-signal')
+                                ->action(function () {
+                                    $this->testConnection();
+                                })
+                                ->visible(fn (Forms\Get $get) => 
+                                    $get('enabled') && 
+                                    $get('credentials_path')
+                                ),
+                                
+                            Forms\Components\Actions\Action::make('submit_sitemap')
+                                ->label('Submit Sitemap Now')
+                                ->icon('heroicon-o-paper-airplane')
+                                ->requiresConfirmation()
+                                ->action(function () {
+                                    $this->submitSitemap();
+                                })
+                                ->visible(fn (Forms\Get $get) => 
+                                    $get('enabled') && 
+                                    $get('credentials_path')
+                                ),
+                                
+                            Forms\Components\Actions\Action::make('view_sitemaps')
+                                ->label('View Submitted Sitemaps')
+                                ->icon('heroicon-o-list-bullet')
+                                ->action(function () {
+                                    $this->viewSitemaps();
+                                })
+                                ->visible(fn (Forms\Get $get) => 
+                                    $get('enabled') && 
+                                    $get('credentials_path')
+                                ),
+                        ]),
+                    ])
+                    ->visible(fn (Forms\Get $get) => $get('enabled')),
+            ])
+            ->statePath('data');
+    }
+    
+    public function save(): void
+    {
+        $data = $this->form->getState();
+        
+        // Update .env file with the new values
+        $envUpdates = [
+            'GOOGLE_SEARCH_CONSOLE_ENABLED' => $data['enabled'] ? 'true' : 'false',
+            'GOOGLE_SEARCH_CONSOLE_SITE_URL' => $data['site_url'],
+            'GOOGLE_APPLICATION_CREDENTIALS' => $data['credentials_path'] ?? '',
+            'GOOGLE_SERVICE_ACCOUNT_EMAIL' => $data['service_account_email'] ?? '',
+        ];
+        
+        $this->updateEnvFile($envUpdates);
+        
+        Notification::make()
+            ->title('Settings saved successfully')
+            ->success()
+            ->send();
+    }
+    
+    protected function updateEnvFile(array $data): void
+    {
+        $envPath = base_path('.env');
+        $envContent = File::get($envPath);
+        
+        foreach ($data as $key => $value) {
+            $pattern = "/^{$key}=.*/m";
+            $replacement = "{$key}=\"{$value}\"";
+            
+            if (preg_match($pattern, $envContent)) {
+                $envContent = preg_replace($pattern, $replacement, $envContent);
+            } else {
+                $envContent .= "\n{$replacement}";
+            }
+        }
+        
+        File::put($envPath, $envContent);
+        
+        // Clear config cache
+        if (function_exists('artisan')) {
+            artisan('config:clear');
+        }
+    }
+    
+    protected function testConnection(): void
+    {
+        try {
+            $service = new GoogleSearchConsoleService();
+            $result = $service->getSitemaps();
+            
+            if ($result['success']) {
+                Notification::make()
+                    ->title('Connection successful!')
+                    ->body('Successfully connected to Google Search Console API.')
+                    ->success()
+                    ->send();
+            } else {
+                Notification::make()
+                    ->title('Connection failed')
+                    ->body($result['message'] ?? 'Could not connect to Google Search Console API.')
+                    ->danger()
+                    ->send();
+            }
+        } catch (\Exception $e) {
+            Notification::make()
+                ->title('Connection error')
+                ->body($e->getMessage())
+                ->danger()
+                ->send();
+        }
+    }
+    
+    protected function submitSitemap(): void
+    {
+        try {
+            $result = GoogleSearchConsoleService::submitGoogleSitemap();
+            
+            if ($result['success']) {
+                Notification::make()
+                    ->title('Sitemap submitted successfully!')
+                    ->body("Sitemap submitted via API to: {$result['sitemap_url']}")
+                    ->success()
+                    ->send();
+            } else {
+                $title = 'Sitemap submission failed';
+                $messages = [$result['message'] ?? 'Could not submit sitemap.'];
+                
+                // Add additional info if available
+                if (isset($result['info'])) {
+                    $messages[] = '';
+                    $messages[] = '💡 ' . $result['info'];
+                }
+                
+                Notification::make()
+                    ->title($title)
+                    ->body(implode("\n", $messages))
+                    ->danger()
+                    ->duration(10000)
+                    ->send();
+            }
+        } catch (\Exception $e) {
+            Notification::make()
+                ->title('Submission error')
+                ->body($e->getMessage())
+                ->danger()
+                ->send();
+        }
+    }
+    
+    protected function viewSitemaps(): void
+    {
+        try {
+            $service = new GoogleSearchConsoleService();
+            $result = $service->getSitemaps();
+            
+            if ($result['success'] && !empty($result['sitemaps'])) {
+                $sitemapList = collect($result['sitemaps'])
+                    ->map(fn($s) => "• {$s['path']} (Errors: {$s['errors']}, Warnings: {$s['warnings']})")
+                    ->join("\n");
+                    
+                Notification::make()
+                    ->title('Submitted Sitemaps')
+                    ->body($sitemapList ?: 'No sitemaps found.')
+                    ->success()
+                    ->duration(10000)
+                    ->send();
+            } else {
+                Notification::make()
+                    ->title('No sitemaps found')
+                    ->body('No sitemaps are currently submitted to Google Search Console.')
+                    ->info()
+                    ->send();
+            }
+        } catch (\Exception $e) {
+            Notification::make()
+                ->title('Error fetching sitemaps')
+                ->body($e->getMessage())
+                ->danger()
+                ->send();
+        }
+    }
+}
