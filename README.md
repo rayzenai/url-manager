@@ -215,23 +215,26 @@ Since Google deprecated the ping endpoint in June 2023 and Bing has also discont
 4. **Configure in Admin Panel**:
    - Navigate to the Google Search Console settings page in your Filament admin panel
    - Toggle "Enable Google Search Console Integration" to ON
-   - Enter your site URL (must match exactly with Search Console property)
-   - **Upload the JSON credentials file**:
-     - Click the file upload field
-     - Select the JSON file you downloaded from Google Cloud Console
-     - The file will be automatically uploaded and stored securely in `storage/app/google-credentials/`
-     - The full path will be saved to your `.env` file as `GOOGLE_APPLICATION_CREDENTIALS`
+   - Enter your site URL or domain property:
+     - **For URL-prefix property**: `https://www.yoursite.com` (must match exactly)
+     - **For Domain property**: `sc-domain:yoursite.com` (recommended - covers all subdomains and protocols)
+   - **Add the JSON credentials file**:
+     - Save the JSON file to `storage/app/google-credentials/`
+     - Enter the path relative to storage directory (e.g., `app/google-credentials/service-account.json`)
+     - Or enter the full absolute path if stored elsewhere
    - The service account email will be automatically extracted and displayed
    - Click "Save Settings"
    - Use "Test Connection" to verify the setup is working
    
-   **Alternative Manual Setup** (if you prefer to place the file manually):
-   - Save the JSON file anywhere on your server (e.g., `storage/app/google-service-account.json`)
+   **Alternative Manual Setup** (if you prefer to configure via .env):
+   - Save the JSON file to your server (e.g., `storage/app/google-credentials/service-account.json`)
    - Add to your `.env` file:
      ```
      GOOGLE_SEARCH_CONSOLE_ENABLED=true
-     GOOGLE_SEARCH_CONSOLE_SITE_URL=https://yoursite.com
+     GOOGLE_SEARCH_CONSOLE_SITE_URL=sc-domain:yoursite.com
+     # Or for URL-prefix: GOOGLE_SEARCH_CONSOLE_SITE_URL=https://www.yoursite.com
      GOOGLE_APPLICATION_CREDENTIALS=/full/path/to/your/service-account.json
+     GOOGLE_SERVICE_ACCOUNT_EMAIL=service-account@project.iam.gserviceaccount.com
      ```
    - The file should NOT be in a publicly accessible directory
 
@@ -265,8 +268,11 @@ Once configured, you can submit sitemaps in multiple ways:
 - **"API not configured" error**: Ensure you've enabled the Google Search Console API in your Google Cloud Project
 - **"Site not verified" error**: Make sure the service account email is added as a user in Search Console with "Owner" permissions
 - **"Invalid credentials" error**: Check that the JSON file path is correct and the file is readable by the web server
-- **403 Forbidden errors**: The service account may not have proper permissions. Verify it's added to Search Console with "Owner" role
-- **File upload not working**: Ensure the `storage/app/google-credentials` directory exists and is writable
+- **403 Forbidden errors**: 
+  - The service account may not have proper permissions. Verify it's added to Search Console with "Owner" role
+  - Check if you're using the correct property format. If you have a domain property in Search Console, use `sc-domain:yoursite.com` format
+  - Verify the exact property format in Search Console matches what you've configured
+- **File path issues**: Enter paths relative to the storage directory (e.g., `app/google-credentials/file.json`) in the admin panel
 
 **General Issues**:
 - **"Invalid site URL" error**: The site URL must match exactly with how it's registered in Search Console (including www/non-www, https/http)
