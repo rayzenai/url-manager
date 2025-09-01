@@ -48,9 +48,12 @@
         </li>
         
         <li>
-            <strong>Upload Credentials Here</strong>
+            <strong>Add Credentials to Your Application</strong>
             <ul>
-                <li>Use the file upload field above to upload your JSON file</li>
+                <li>Save the JSON file to: <code>storage/app/google-credentials/</code></li>
+                <li>Name it something like: <code>service-account.json</code></li>
+                <li>Enter the full path in the field above</li>
+                <li>Example: <code>{{ storage_path('app/google-credentials/service-account.json') }}</code></li>
                 <li>The service account email will be automatically extracted</li>
                 <li>Click "Save Settings" when done</li>
             </ul>

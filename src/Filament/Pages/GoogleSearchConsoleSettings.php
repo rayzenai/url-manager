@@ -65,35 +65,23 @@ class GoogleSearchConsoleSettings extends Page implements HasForms
                     ]),
                     
                 Section::make('Service Account Configuration')
-                    ->description('Upload your Google Service Account JSON credentials file.')
+                    ->description('Configure your Google Service Account credentials.')
                     ->schema([
-                        Forms\Components\FileUpload::make('credentials_upload')
-                            ->label('Service Account JSON File')
-                            ->acceptedFileTypes(['application/json'])
-                            ->directory('google-credentials')
-                            ->visibility('private')
-                            ->helperText('Upload your service account JSON file (will be stored securely)')
-                            ->afterStateUpdated(function ($state, Set $set) {
-                                if ($state) {
-                                    $path = storage_path('app/' . $state);
-                                    $set('credentials_path', $path);
-                                    
-                                    // Try to extract service account email from JSON
-                                    if (File::exists($path)) {
-                                        $json = json_decode(File::get($path), true);
-                                        if (isset($json['client_email'])) {
-                                            $set('service_account_email', $json['client_email']);
-                                        }
-                                    }
-                                }
-                            }),
-                            
                         Forms\Components\TextInput::make('credentials_path')
                             ->label('Credentials File Path')
-                            ->placeholder('/path/to/service-account.json')
-                            ->helperText('Full path to your Google Service Account JSON credentials file')
-                            ->disabled()
-                            ->dehydrated(),
+                            ->placeholder(storage_path('app/google-credentials/service-account.json'))
+                            ->helperText('Full path to your Google Service Account JSON credentials file. Place your JSON file in storage/app/google-credentials/')
+                            ->required()
+                            ->afterStateUpdated(function ($state, Set $set) {
+                                if ($state && File::exists($state)) {
+                                    // Try to extract service account email from JSON
+                                    $json = json_decode(File::get($state), true);
+                                    if (isset($json['client_email'])) {
+                                        $set('service_account_email', $json['client_email']);
+                                    }
+                                }
+                            })
+                            ->live(),
                             
                         Forms\Components\TextInput::make('service_account_email')
                             ->label('Service Account Email')
@@ -199,6 +187,16 @@ class GoogleSearchConsoleSettings extends Page implements HasForms
     protected function testConnection(): void
     {
         try {
+            // Get current form data
+            $data = $this->form->getState();
+            
+            // Temporarily set config values for testing
+            config([
+                'url-manager.google_search_console.enabled' => true,
+                'url-manager.google_search_console.credentials_path' => $data['credentials_path'],
+                'url-manager.google_search_console.site_url' => $data['site_url'],
+            ]);
+            
             $service = new GoogleSearchConsoleService();
             $result = $service->getSitemaps();
             
@@ -227,6 +225,16 @@ class GoogleSearchConsoleSettings extends Page implements HasForms
     protected function submitSitemap(): void
     {
         try {
+            // Get current form data
+            $data = $this->form->getState();
+            
+            // Temporarily set config values for submission
+            config([
+                'url-manager.google_search_console.enabled' => true,
+                'url-manager.google_search_console.credentials_path' => $data['credentials_path'],
+                'url-manager.google_search_console.site_url' => $data['site_url'],
+            ]);
+            
             $result = GoogleSearchConsoleService::submitGoogleSitemap();
             
             if ($result['success']) {
@@ -264,6 +272,16 @@ class GoogleSearchConsoleSettings extends Page implements HasForms
     protected function viewSitemaps(): void
     {
         try {
+            // Get current form data
+            $data = $this->form->getState();
+            
+            // Temporarily set config values
+            config([
+                'url-manager.google_search_console.enabled' => true,
+                'url-manager.google_search_console.credentials_path' => $data['credentials_path'],
+                'url-manager.google_search_console.site_url' => $data['site_url'],
+            ]);
+            
             $service = new GoogleSearchConsoleService();
             $result = $service->getSitemaps();
             
