@@ -35,10 +35,17 @@ class GoogleSearchConsoleSettings extends Page implements HasForms
     {
         $config = config('url-manager.google_search_console');
         
+        // Convert absolute path back to relative for display
+        $credentialsPath = $config['credentials_path'] ?? '';
+        if ($credentialsPath && str_starts_with($credentialsPath, storage_path())) {
+            // Remove the storage path prefix to show relative path
+            $credentialsPath = str_replace(storage_path() . '/', '', $credentialsPath);
+        }
+        
         $this->form->fill([
             'enabled' => $config['enabled'] ?? false,
             'site_url' => $config['site_url'] ?? url('/'),
-            'credentials_path' => $config['credentials_path'] ?? '',
+            'credentials_path' => $credentialsPath,
             'service_account_email' => $config['service_account_email'] ?? '',
         ]);
     }
@@ -56,11 +63,10 @@ class GoogleSearchConsoleSettings extends Page implements HasForms
                             ->live(),
                             
                         Forms\Components\TextInput::make('site_url')
-                            ->label('Site URL')
-                            ->placeholder('https://example.com')
-                            ->helperText('The URL of your site as registered in Google Search Console (must match exactly)')
+                            ->label('Site URL / Domain Property')
+                            ->placeholder('https://example.com or sc-domain:example.com')
+                            ->helperText('Enter your site URL or domain property (e.g., "https://www.example.com" or "sc-domain:example.com")')
                             ->required()
-                            ->url()
                             ->default(url('/')),
                     ]),
                     
@@ -69,13 +75,15 @@ class GoogleSearchConsoleSettings extends Page implements HasForms
                     ->schema([
                         Forms\Components\TextInput::make('credentials_path')
                             ->label('Credentials File Path')
-                            ->placeholder(storage_path('app/google-credentials/service-account.json'))
-                            ->helperText('Full path to your Google Service Account JSON credentials file. Place your JSON file in storage/app/google-credentials/')
+                            ->placeholder('app/google-credentials/service-account.json')
+                            ->helperText('Path relative to storage directory (e.g., app/google-credentials/service-account.json)')
                             ->required()
                             ->afterStateUpdated(function ($state, Set $set) {
-                                if ($state && File::exists($state)) {
+                                // Convert relative path to absolute for checking
+                                $fullPath = storage_path($state);
+                                if ($state && File::exists($fullPath)) {
                                     // Try to extract service account email from JSON
-                                    $json = json_decode(File::get($state), true);
+                                    $json = json_decode(File::get($fullPath), true);
                                     if (isset($json['client_email'])) {
                                         $set('service_account_email', $json['client_email']);
                                     }
@@ -144,11 +152,17 @@ class GoogleSearchConsoleSettings extends Page implements HasForms
     {
         $data = $this->form->getState();
         
+        // Convert relative path to absolute if needed
+        $credentialsPath = $data['credentials_path'] ?? '';
+        if ($credentialsPath && !str_starts_with($credentialsPath, '/')) {
+            $credentialsPath = storage_path($credentialsPath);
+        }
+        
         // Update .env file with the new values
         $envUpdates = [
             'GOOGLE_SEARCH_CONSOLE_ENABLED' => $data['enabled'] ? 'true' : 'false',
             'GOOGLE_SEARCH_CONSOLE_SITE_URL' => $data['site_url'],
-            'GOOGLE_APPLICATION_CREDENTIALS' => $data['credentials_path'] ?? '',
+            'GOOGLE_APPLICATION_CREDENTIALS' => $credentialsPath,
             'GOOGLE_SERVICE_ACCOUNT_EMAIL' => $data['service_account_email'] ?? '',
         ];
         
@@ -190,10 +204,16 @@ class GoogleSearchConsoleSettings extends Page implements HasForms
             // Get current form data
             $data = $this->form->getState();
             
+            // Convert relative path to absolute if needed
+            $credentialsPath = $data['credentials_path'] ?? '';
+            if ($credentialsPath && !str_starts_with($credentialsPath, '/')) {
+                $credentialsPath = storage_path($credentialsPath);
+            }
+            
             // Temporarily set config values for testing
             config([
                 'url-manager.google_search_console.enabled' => true,
-                'url-manager.google_search_console.credentials_path' => $data['credentials_path'],
+                'url-manager.google_search_console.credentials_path' => $credentialsPath,
                 'url-manager.google_search_console.site_url' => $data['site_url'],
             ]);
             
@@ -228,10 +248,16 @@ class GoogleSearchConsoleSettings extends Page implements HasForms
             // Get current form data
             $data = $this->form->getState();
             
+            // Convert relative path to absolute if needed
+            $credentialsPath = $data['credentials_path'] ?? '';
+            if ($credentialsPath && !str_starts_with($credentialsPath, '/')) {
+                $credentialsPath = storage_path($credentialsPath);
+            }
+            
             // Temporarily set config values for submission
             config([
                 'url-manager.google_search_console.enabled' => true,
-                'url-manager.google_search_console.credentials_path' => $data['credentials_path'],
+                'url-manager.google_search_console.credentials_path' => $credentialsPath,
                 'url-manager.google_search_console.site_url' => $data['site_url'],
             ]);
             
@@ -275,10 +301,16 @@ class GoogleSearchConsoleSettings extends Page implements HasForms
             // Get current form data
             $data = $this->form->getState();
             
+            // Convert relative path to absolute if needed
+            $credentialsPath = $data['credentials_path'] ?? '';
+            if ($credentialsPath && !str_starts_with($credentialsPath, '/')) {
+                $credentialsPath = storage_path($credentialsPath);
+            }
+            
             // Temporarily set config values
             config([
                 'url-manager.google_search_console.enabled' => true,
-                'url-manager.google_search_console.credentials_path' => $data['credentials_path'],
+                'url-manager.google_search_console.credentials_path' => $credentialsPath,
                 'url-manager.google_search_console.site_url' => $data['site_url'],
             ]);
             
