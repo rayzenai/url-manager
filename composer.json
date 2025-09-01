@@ -1,0 +1,48 @@
+{
+    "name": "rayzenai/url-manager",
+    "description": "Laravel URL management package with Filament integration for SEO-friendly URLs, redirects, and sitemap generation",
+    "keywords": ["laravel", "url", "seo", "redirect", "sitemap", "filament"],
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Kiran Timsina",
+            "email": "kirantimsina3@gmail.com"
+        }
+    ],
+    "require": {
+        "php": "^8.3",
+        "illuminate/support": "^11.0|^12.0",
+        "filament/filament": "^4.0",
+        "spatie/laravel-package-tools": "^1.16",
+        "spatie/laravel-sitemap": "^7.0"
+    },
+    "require-dev": {
+        "orchestra/testbench": "^9.0",
+        "pestphp/pest": "^3.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "RayzenAI\\UrlManager\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "RayzenAI\\UrlManager\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "RayzenAI\\UrlManager\\UrlManagerServiceProvider"
+            ]
+        }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true,
+    "config": {
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        }
+    }
+}
