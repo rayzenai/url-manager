@@ -40,6 +40,10 @@ php artisan vendor:publish --tag=url-manager-migrations
 php artisan migrate
 ```
 
+This will create two tables:
+- `urls` - For managing URLs and redirects
+- `google_search_console_settings` - For storing Google Search Console credentials securely
+
 ### Step 4: Register with Filament
 
 Add the plugin to your Filament panel configuration (typically in `app/Providers/Filament/AdminPanelProvider.php`):
@@ -218,25 +222,19 @@ Since Google deprecated the ping endpoint in June 2023 and Bing has also discont
    - Enter your site URL or domain property:
      - **For URL-prefix property**: `https://www.yoursite.com` (must match exactly)
      - **For Domain property**: `sc-domain:yoursite.com` (recommended - covers all subdomains and protocols)
-   - **Add the JSON credentials file**:
-     - Save the JSON file to `storage/app/google-credentials/`
-     - Enter the path relative to storage directory (e.g., `app/google-credentials/service-account.json`)
-     - Or enter the full absolute path if stored elsewhere
-   - The service account email will be automatically extracted and displayed
+   - **Add your Service Account credentials**:
+     - Open your downloaded JSON file in a text editor
+     - Copy the entire JSON content
+     - Paste it into the "Service Account JSON" field
+     - The service account email will be automatically extracted
    - Click "Save Settings"
    - Use "Test Connection" to verify the setup is working
    
-   **Alternative Manual Setup** (if you prefer to configure via .env):
-   - Save the JSON file to your server (e.g., `storage/app/google-credentials/service-account.json`)
-   - Add to your `.env` file:
-     ```
-     GOOGLE_SEARCH_CONSOLE_ENABLED=true
-     GOOGLE_SEARCH_CONSOLE_SITE_URL=sc-domain:yoursite.com
-     # Or for URL-prefix: GOOGLE_SEARCH_CONSOLE_SITE_URL=https://www.yoursite.com
-     GOOGLE_APPLICATION_CREDENTIALS=/full/path/to/your/service-account.json
-     GOOGLE_SERVICE_ACCOUNT_EMAIL=service-account@project.iam.gserviceaccount.com
-     ```
-   - The file should NOT be in a publicly accessible directory
+   **Why Database Storage?**
+   - Credentials are encrypted and stored securely in your database
+   - Survives deployments (no need to re-upload files)
+   - No file system dependencies
+   - Easier to manage in production environments
 
 #### Submitting Sitemaps
 
@@ -272,7 +270,7 @@ Once configured, you can submit sitemaps in multiple ways:
   - The service account may not have proper permissions. Verify it's added to Search Console with "Owner" role
   - Check if you're using the correct property format. If you have a domain property in Search Console, use `sc-domain:yoursite.com` format
   - Verify the exact property format in Search Console matches what you've configured
-- **File path issues**: Enter paths relative to the storage directory (e.g., `app/google-credentials/file.json`) in the admin panel
+- **Invalid JSON error**: Ensure you're copying the complete JSON content from the credentials file, including all brackets
 
 **General Issues**:
 - **"Invalid site URL" error**: The site URL must match exactly with how it's registered in Search Console (including www/non-www, https/http)

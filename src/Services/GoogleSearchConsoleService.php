@@ -7,6 +7,7 @@ use Google\Client;
 use Google\Service\SearchConsole;
 use Google\Service\Webmasters;
 use Illuminate\Support\Facades\Log;
+use RayzenAI\UrlManager\Models\GoogleSearchConsoleSetting;
 
 class GoogleSearchConsoleService
 {
@@ -23,21 +24,27 @@ class GoogleSearchConsoleService
             return;
         }
         
-        $config = config('url-manager.google_search_console');
+        // Get settings from database
+        $settings = GoogleSearchConsoleSetting::getSettings();
         
-        if (!$config['enabled']) {
+        if (!$settings->enabled) {
             return;
         }
         
         // Check if service account credentials are configured
-        if (!$config['credentials_path'] || !file_exists($config['credentials_path'])) {
+        if (!$settings->credentials) {
             return;
         }
         
         try {
             $this->client = new Client();
             $this->client->setApplicationName('URL Manager - Search Console');
-            $this->client->setAuthConfig($config['credentials_path']);
+            
+            // Create a temporary file with the credentials
+            $tempFile = tempnam(sys_get_temp_dir(), 'gsc_');
+            file_put_contents($tempFile, $settings->credentials_json);
+            
+            $this->client->setAuthConfig($tempFile);
             $this->client->setScopes([
                 SearchConsole::WEBMASTERS,
                 SearchConsole::WEBMASTERS_READONLY,
@@ -46,6 +53,9 @@ class GoogleSearchConsoleService
             // Initialize services
             $this->webmastersService = new Webmasters($this->client);
             $this->searchConsoleService = new SearchConsole($this->client);
+            
+            // Clean up temp file
+            unlink($tempFile);
         } catch (Exception $e) {
             Log::error('Failed to initialize Google Search Console client', [
                 'error' => $e->getMessage()
@@ -79,7 +89,8 @@ class GoogleSearchConsoleService
     {
         try {
             $sitemapUrl = $sitemapUrl ?: url('/sitemap.xml');
-            $siteUrl = config('url-manager.google_search_console.site_url') ?: url('/');
+            $settings = GoogleSearchConsoleSetting::getSettings();
+            $siteUrl = $settings->site_url ?: url('/');
             
             // First, verify the site is added
             $this->verifySiteInSearchConsole($siteUrl);
@@ -196,7 +207,8 @@ class GoogleSearchConsoleService
         }
         
         try {
-            $siteUrl = $siteUrl ?: config('url-manager.google_search_console.site_url') ?: url('/');
+            $settings = GoogleSearchConsoleSetting::getSettings();
+            $siteUrl = $siteUrl ?: $settings->site_url ?: url('/');
             $sitemaps = $this->webmastersService->sitemaps->listSitemaps($siteUrl);
             
             $sitemapList = [];
@@ -241,7 +253,8 @@ class GoogleSearchConsoleService
         }
         
         try {
-            $siteUrl = $siteUrl ?: config('url-manager.google_search_console.site_url') ?: url('/');
+            $settings = GoogleSearchConsoleSetting::getSettings();
+            $siteUrl = $siteUrl ?: $settings->site_url ?: url('/');
             $this->webmastersService->sitemaps->delete($siteUrl, $sitemapUrl);
             
             return [
@@ -272,7 +285,8 @@ class GoogleSearchConsoleService
         }
         
         try {
-            $siteUrl = $siteUrl ?: config('url-manager.google_search_console.site_url') ?: url('/');
+            $settings = GoogleSearchConsoleSetting::getSettings();
+            $siteUrl = $siteUrl ?: $settings->site_url ?: url('/');
             
             $request = new \Google\Service\SearchConsole\SearchAnalyticsQueryRequest();
             $request->setStartDate($options['start_date'] ?? date('Y-m-d', strtotime('-30 days')));

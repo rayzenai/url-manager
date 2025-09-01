@@ -16,6 +16,7 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Illuminate\Support\Facades\File;
+use RayzenAI\UrlManager\Models\GoogleSearchConsoleSetting;
 use RayzenAI\UrlManager\Services\GoogleSearchConsoleService;
 
 class GoogleSearchConsoleSettings extends Page implements HasForms
@@ -33,20 +34,14 @@ class GoogleSearchConsoleSettings extends Page implements HasForms
     
     public function mount(): void
     {
-        $config = config('url-manager.google_search_console');
-        
-        // Convert absolute path back to relative for display
-        $credentialsPath = $config['credentials_path'] ?? '';
-        if ($credentialsPath && str_starts_with($credentialsPath, storage_path())) {
-            // Remove the storage path prefix to show relative path
-            $credentialsPath = str_replace(storage_path() . '/', '', $credentialsPath);
-        }
+        $settings = GoogleSearchConsoleSetting::getSettings();
         
         $this->form->fill([
-            'enabled' => $config['enabled'] ?? false,
-            'site_url' => $config['site_url'] ?? url('/'),
-            'credentials_path' => $credentialsPath,
-            'service_account_email' => $config['service_account_email'] ?? '',
+            'enabled' => $settings->enabled,
+            'site_url' => $settings->site_url ?: url('/'),
+            'credentials_json' => '', // Don't show existing credentials for security
+            'service_account_email' => $settings->service_account_email,
+            'has_saved_credentials' => !empty($settings->credentials), // Track if credentials exist
         ]);
     }
     
@@ -73,23 +68,36 @@ class GoogleSearchConsoleSettings extends Page implements HasForms
                 Section::make('Service Account Configuration')
                     ->description('Configure your Google Service Account credentials.')
                     ->schema([
-                        Forms\Components\TextInput::make('credentials_path')
-                            ->label('Credentials File Path')
-                            ->placeholder('app/google-credentials/service-account.json')
-                            ->helperText('Path relative to storage directory (e.g., app/google-credentials/service-account.json)')
-                            ->required()
+                        Forms\Components\Textarea::make('credentials_json')
+                            ->label('Service Account JSON')
+                            ->placeholder(fn (Get $get) => 
+                                $get('has_saved_credentials') 
+                                    ? 'Credentials are already saved. Paste new JSON here to update them...'
+                                    : 'Paste your entire Service Account JSON here...'
+                            )
+                            ->helperText(fn (Get $get) => 
+                                $get('has_saved_credentials')
+                                    ? '✅ Credentials are saved securely in the database. Leave empty to keep existing credentials.'
+                                    : 'Paste the complete JSON content from your Service Account credentials file'
+                            )
+                            ->rows(10)
+                            ->required(fn (Get $get) => !$get('has_saved_credentials'))
                             ->afterStateUpdated(function ($state, Set $set) {
-                                // Convert relative path to absolute for checking
-                                $fullPath = storage_path($state);
-                                if ($state && File::exists($fullPath)) {
-                                    // Try to extract service account email from JSON
-                                    $json = json_decode(File::get($fullPath), true);
-                                    if (isset($json['client_email'])) {
-                                        $set('service_account_email', $json['client_email']);
+                                if ($state) {
+                                    try {
+                                        // Validate and parse JSON
+                                        $json = json_decode($state, true);
+                                        if (json_last_error() === JSON_ERROR_NONE && isset($json['client_email'])) {
+                                            $set('service_account_email', $json['client_email']);
+                                        }
+                                    } catch (\Exception $e) {
+                                        // Invalid JSON, ignore
                                     }
                                 }
                             })
                             ->live(),
+                            
+                        Forms\Components\Hidden::make('has_saved_credentials'),
                             
                         Forms\Components\TextInput::make('service_account_email')
                             ->label('Service Account Email')
@@ -116,7 +124,7 @@ class GoogleSearchConsoleSettings extends Page implements HasForms
                                 })
                                 ->visible(fn (Get $get) => 
                                     $get('enabled') && 
-                                    $get('credentials_path')
+                                    (!empty($get('service_account_email')) || $get('has_saved_credentials'))
                                 ),
                                 
                             Action::make('submit_sitemap')
@@ -128,7 +136,7 @@ class GoogleSearchConsoleSettings extends Page implements HasForms
                                 })
                                 ->visible(fn (Get $get) => 
                                     $get('enabled') && 
-                                    $get('credentials_path')
+                                    (!empty($get('service_account_email')) || $get('has_saved_credentials'))
                                 ),
                                 
                             Action::make('view_sitemaps')
@@ -139,7 +147,7 @@ class GoogleSearchConsoleSettings extends Page implements HasForms
                                 })
                                 ->visible(fn (Get $get) => 
                                     $get('enabled') && 
-                                    $get('credentials_path')
+                                    (!empty($get('service_account_email')) || $get('has_saved_credentials'))
                                 ),
                         ]),
                     ])
@@ -152,51 +160,44 @@ class GoogleSearchConsoleSettings extends Page implements HasForms
     {
         $data = $this->form->getState();
         
-        // Convert relative path to absolute if needed
-        $credentialsPath = $data['credentials_path'] ?? '';
-        if ($credentialsPath && !str_starts_with($credentialsPath, '/')) {
-            $credentialsPath = storage_path($credentialsPath);
-        }
+        $settings = GoogleSearchConsoleSetting::getSettings();
         
-        // Update .env file with the new values
-        $envUpdates = [
-            'GOOGLE_SEARCH_CONSOLE_ENABLED' => $data['enabled'] ? 'true' : 'false',
-            'GOOGLE_SEARCH_CONSOLE_SITE_URL' => $data['site_url'],
-            'GOOGLE_APPLICATION_CREDENTIALS' => $credentialsPath,
-            'GOOGLE_SERVICE_ACCOUNT_EMAIL' => $data['service_account_email'] ?? '',
+        $updateData = [
+            'enabled' => $data['enabled'],
+            'site_url' => $data['site_url'],
         ];
         
-        $this->updateEnvFile($envUpdates);
+        // Only update credentials if new JSON was provided
+        if (!empty($data['credentials_json'])) {
+            try {
+                $credentials = json_decode($data['credentials_json'], true);
+                if (json_last_error() !== JSON_ERROR_NONE) {
+                    throw new \Exception('Invalid JSON format');
+                }
+                
+                $updateData['credentials'] = $credentials;
+                if (isset($credentials['client_email'])) {
+                    $updateData['service_account_email'] = $credentials['client_email'];
+                }
+            } catch (\Exception $e) {
+                Notification::make()
+                    ->title('Invalid JSON')
+                    ->body('The credentials JSON is not valid. Please check the format.')
+                    ->danger()
+                    ->send();
+                return;
+            }
+        }
+        
+        $settings->updateSettings($updateData);
         
         Notification::make()
             ->title('Settings saved successfully')
+            ->body('Your Google Search Console settings have been saved to the database.')
             ->success()
             ->send();
     }
     
-    protected function updateEnvFile(array $data): void
-    {
-        $envPath = base_path('.env');
-        $envContent = File::get($envPath);
-        
-        foreach ($data as $key => $value) {
-            $pattern = "/^{$key}=.*/m";
-            $replacement = "{$key}=\"{$value}\"";
-            
-            if (preg_match($pattern, $envContent)) {
-                $envContent = preg_replace($pattern, $replacement, $envContent);
-            } else {
-                $envContent .= "\n{$replacement}";
-            }
-        }
-        
-        File::put($envPath, $envContent);
-        
-        // Clear config cache
-        if (function_exists('artisan')) {
-            artisan('config:clear');
-        }
-    }
     
     protected function testConnection(): void
     {
@@ -204,19 +205,48 @@ class GoogleSearchConsoleSettings extends Page implements HasForms
             // Get current form data
             $data = $this->form->getState();
             
-            // Convert relative path to absolute if needed
-            $credentialsPath = $data['credentials_path'] ?? '';
-            if ($credentialsPath && !str_starts_with($credentialsPath, '/')) {
-                $credentialsPath = storage_path($credentialsPath);
+            // Get current settings from database
+            $settings = GoogleSearchConsoleSetting::getSettings();
+            
+            // Check if we have credentials (either from form or already saved)
+            $hasCredentials = !empty($data['credentials_json']) || !empty($settings->credentials);
+            
+            if (!$hasCredentials) {
+                Notification::make()
+                    ->title('No credentials')
+                    ->body('Please provide Service Account JSON credentials.')
+                    ->danger()
+                    ->send();
+                return;
             }
             
-            // Temporarily set config values for testing
-            config([
-                'url-manager.google_search_console.enabled' => true,
-                'url-manager.google_search_console.credentials_path' => $credentialsPath,
-                'url-manager.google_search_console.site_url' => $data['site_url'],
-            ]);
+            // Update with new credentials if provided
+            if (!empty($data['credentials_json'])) {
+                try {
+                    $credentials = json_decode($data['credentials_json'], true);
+                    if (json_last_error() !== JSON_ERROR_NONE) {
+                        throw new \Exception('Invalid JSON format');
+                    }
+                    $settings->credentials = $credentials;
+                    if (isset($credentials['client_email'])) {
+                        $settings->service_account_email = $credentials['client_email'];
+                    }
+                } catch (\Exception $e) {
+                    Notification::make()
+                        ->title('Invalid JSON')
+                        ->body('The credentials JSON is not valid.')
+                        ->danger()
+                        ->send();
+                    return;
+                }
+            }
             
+            // Update other settings
+            $settings->enabled = true;
+            $settings->site_url = $data['site_url'];
+            $settings->save();
+            
+            // Test the connection
             $service = new GoogleSearchConsoleService();
             $result = $service->getSitemaps();
             
@@ -248,19 +278,7 @@ class GoogleSearchConsoleSettings extends Page implements HasForms
             // Get current form data
             $data = $this->form->getState();
             
-            // Convert relative path to absolute if needed
-            $credentialsPath = $data['credentials_path'] ?? '';
-            if ($credentialsPath && !str_starts_with($credentialsPath, '/')) {
-                $credentialsPath = storage_path($credentialsPath);
-            }
-            
-            // Temporarily set config values for submission
-            config([
-                'url-manager.google_search_console.enabled' => true,
-                'url-manager.google_search_console.credentials_path' => $credentialsPath,
-                'url-manager.google_search_console.site_url' => $data['site_url'],
-            ]);
-            
+            // Use current settings for submission
             $result = GoogleSearchConsoleService::submitGoogleSitemap();
             
             if ($result['success']) {
@@ -301,19 +319,7 @@ class GoogleSearchConsoleSettings extends Page implements HasForms
             // Get current form data
             $data = $this->form->getState();
             
-            // Convert relative path to absolute if needed
-            $credentialsPath = $data['credentials_path'] ?? '';
-            if ($credentialsPath && !str_starts_with($credentialsPath, '/')) {
-                $credentialsPath = storage_path($credentialsPath);
-            }
-            
-            // Temporarily set config values
-            config([
-                'url-manager.google_search_console.enabled' => true,
-                'url-manager.google_search_console.credentials_path' => $credentialsPath,
-                'url-manager.google_search_console.site_url' => $data['site_url'],
-            ]);
-            
+            // Use current settings
             $service = new GoogleSearchConsoleService();
             $result = $service->getSitemaps();
             
