@@ -29,7 +29,9 @@ return new class extends Migration
             
             // Composite indexes for performance
             $table->index(['status', 'type']);
-            $table->index(['urable_type', 'urable_id']);
+            
+            // Note: morphs() already create the followigng index
+            // $table->index(['urable_type', 'urable_id']); 
         });
     }
 
