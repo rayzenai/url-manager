@@ -26,8 +26,12 @@ class GoogleSearchConsoleSettings extends Page implements HasForms
     protected static ?string $slug = 'google-search-console-settings';
     protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-magnifying-glass';
     protected static ?string $navigationLabel = 'Google Search Console';
-    protected static string | \UnitEnum | null $navigationGroup = 'Settings';
     protected static ?int $navigationSort = 100;
+    
+    public static function getNavigationGroup(): ?string
+    {
+        return config('url-manager.filament.navigation_group', 'System');
+    }
     protected string $view = 'url-manager::filament.pages.google-search-console-settings';
     
     public ?array $data = [];

@@ -17,8 +17,12 @@ class UrlResource extends Resource
     protected static ?string $model = Url::class;
 
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-link';
-    protected static string|\UnitEnum|null $navigationGroup = 'System';
     protected static ?int $navigationSort = 100;
+    
+    public static function getNavigationGroup(): ?string
+    {
+        return config('url-manager.filament.navigation_group', 'System');
+    }
     
     public static function getNavigationLabel(): string
     {

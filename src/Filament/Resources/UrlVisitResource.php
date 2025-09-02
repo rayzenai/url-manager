@@ -21,13 +21,16 @@ class UrlVisitResource extends Resource
 
     protected static BackedEnum | string | null $navigationIcon = 'heroicon-o-chart-bar';
     
-    protected static string | UnitEnum | null $navigationGroup = 'URL Management';
-    
     protected static ?int $navigationSort = 2;
     
     protected static ?string $modelLabel = 'URL Visit';
     
     protected static ?string $pluralModelLabel = 'URL Visits';
+    
+    public static function getNavigationGroup(): ?string
+    {
+        return config('url-manager.filament.navigation_group', 'System');
+    }
 
     public static function table(Table $table): Table
     {
