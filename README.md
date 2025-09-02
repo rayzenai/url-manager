@@ -300,7 +300,68 @@ if ($product->url && $product->url->status === 'active') {
 
 ### Visit Tracking
 
-Visits are automatically tracked when using the package's URL controller. Access visit data:
+The package provides two ways to track visits:
+
+#### Method 1: Using Middleware (Recommended for Livewire & API Routes)
+
+Register the middleware in your application:
+
+**For Laravel 11** - Add to `bootstrap/app.php`:
+```php
+->withMiddleware(function (Middleware $middleware) {
+    $middleware->alias([
+        'track-url-visits' => \RayzenAI\UrlManager\Http\Middleware\TrackUrlVisits::class,
+    ]);
+})
+```
+
+**For Laravel 10 and below** - Add to `app/Http/Kernel.php`:
+```php
+protected $middlewareAliases = [
+    // ...
+    'track-url-visits' => \RayzenAI\UrlManager\Http\Middleware\TrackUrlVisits::class,
+];
+```
+
+Then apply the middleware to your routes:
+
+```php
+// For Livewire components
+Route::get('/property/{slug}', PropertyDetails::class)
+    ->middleware('track-url-visits')
+    ->name('property');
+
+// For API routes
+Route::middleware(['track-url-visits'])->group(function () {
+    Route::get('/api/products/{slug}', [ProductController::class, 'show']);
+    Route::get('/api/categories/{slug}', [CategoryController::class, 'show']);
+});
+
+// Works with any route type - controllers, closures, Livewire, Inertia, etc.
+Route::middleware(['auth', 'track-url-visits'])->group(function () {
+    Route::get('/dashboard', Dashboard::class);
+    Route::get('/profile', [ProfileController::class, 'show']);
+});
+```
+
+The middleware automatically:
+- Matches the request path against URLs in the database
+- Records visits asynchronously via queued jobs
+- Captures IP address, user agent, referrer, and authenticated user ID
+- Works transparently without modifying your controllers or components
+
+#### Method 2: Using Fallback Route
+
+If you use the package's fallback route controller:
+
+```php
+// Add at the END of your routes/web.php
+Route::fallback([\RayzenAI\UrlManager\Http\Controllers\UrlController::class, 'handle']);
+```
+
+Visits are automatically tracked for any URL managed by the package.
+
+#### Accessing Visit Data
 
 ```php
 $url = $product->url;

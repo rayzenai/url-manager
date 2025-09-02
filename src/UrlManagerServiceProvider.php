@@ -2,9 +2,11 @@
 
 namespace RayzenAI\UrlManager;
 
+use Illuminate\Routing\Router;
 use RayzenAI\UrlManager\Commands\GenerateSitemap;
 use RayzenAI\UrlManager\Commands\GenerateUrlsForModels;
 use RayzenAI\UrlManager\Commands\SubmitSitemapToGoogle;
+use RayzenAI\UrlManager\Http\Middleware\TrackUrlVisits;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
 
@@ -27,5 +29,28 @@ class UrlManagerServiceProvider extends PackageServiceProvider
                 GenerateUrlsForModels::class,
                 SubmitSitemapToGoogle::class,
             ]);
+    }
+    
+    public function packageBooted()
+    {
+        $this->registerMiddleware();
+    }
+    
+    protected function registerMiddleware()
+    {
+        if (!config('url-manager.middleware.enabled', true)) {
+            return;
+        }
+        
+        $router = $this->app->make(Router::class);
+        $alias = config('url-manager.middleware.alias', 'track-url-visits');
+        
+        // Register middleware alias
+        $router->aliasMiddleware($alias, TrackUrlVisits::class);
+        
+        // Auto-apply to web routes if configured
+        if (config('url-manager.middleware.auto_apply', false)) {
+            $router->pushMiddlewareToGroup('web', TrackUrlVisits::class);
+        }
     }
 }
