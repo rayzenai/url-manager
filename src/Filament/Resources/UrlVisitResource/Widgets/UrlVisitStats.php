@@ -12,6 +12,13 @@ use Illuminate\Support\Facades\DB;
 class UrlVisitStats extends StatsOverviewWidget
 {
     protected static ?int $sort = 1;
+    
+    protected int | string | array $columnSpan = 'full';
+    
+    protected function getColumns(): int
+    {
+        return 3;
+    }
 
     protected function getStats(): array
     {
@@ -62,6 +69,51 @@ class UrlVisitStats extends StatsOverviewWidget
             ->orderBy('count', 'desc')
             ->first();
 
+        // Top URL this week
+        $topUrl = UrlVisit::where('created_at', '>=', $lastWeek)
+            ->select('url_id', DB::raw('count(*) as count'))
+            ->with('url:id,slug')
+            ->groupBy('url_id')
+            ->orderBy('count', 'desc')
+            ->first();
+        
+        // Top referrer
+        $topReferrer = UrlVisit::where('created_at', '>=', $lastWeek)
+            ->whereNotNull('referer')
+            ->where('referer', '!=', '')
+            ->select('referer', DB::raw('count(*) as count'))
+            ->groupBy('referer')
+            ->orderBy('count', 'desc')
+            ->first();
+        
+        // User engagement
+        $authenticatedVisits = UrlVisit::where('created_at', '>=', $lastWeek)
+            ->whereNotNull('user_id')
+            ->count();
+        $anonymousVisits = $weekVisits - $authenticatedVisits;
+        $authPercent = $weekVisits > 0 ? round(($authenticatedVisits / $weekVisits) * 100) : 0;
+        
+        // Peak hour today
+        $peakHour = UrlVisit::whereDate('created_at', today())
+            ->select(DB::raw('EXTRACT(HOUR FROM created_at)::integer as hour'), DB::raw('count(*) as count'))
+            ->groupBy('hour')
+            ->orderBy('count', 'desc')
+            ->first();
+        
+        $peakHourFormatted = $peakHour ? 
+            Carbon::today()->setHour((int)$peakHour->hour)->format('g A') : 'N/A';
+        
+        // Bounce rate (single page visits) - visitors who only viewed one URL
+        $visitorPageViews = UrlVisit::where('created_at', '>=', $lastWeek)
+            ->select('ip_address', DB::raw('count(DISTINCT url_id) as page_count'))
+            ->groupBy('ip_address')
+            ->get();
+        
+        $singlePageVisitors = $visitorPageViews->where('page_count', 1)->count();
+        $totalVisitors = $visitorPageViews->count();
+        $bounceRate = $totalVisitors > 0 ? 
+            round(($singlePageVisitors / $totalVisitors) * 100) : 0;
+
         return [
             Stat::make('Today\'s Visits', number_format($todayVisits))
                 ->description($todayUniqueVisitors . ' unique visitors')
@@ -84,6 +136,35 @@ class UrlVisitStats extends StatsOverviewWidget
                 ->description(($topBrowser->count ?? 0) . ' visits this week')
                 ->descriptionIcon('heroicon-m-globe-alt')
                 ->color('secondary'),
+            
+            Stat::make('Top Page', $topUrl && $topUrl->url ? 
+                    (strlen($topUrl->url->slug) > 30 ? 
+                        substr($topUrl->url->slug, 0, 30) . '...' : 
+                        $topUrl->url->slug) : 'N/A')
+                ->description(($topUrl->count ?? 0) . ' visits this week')
+                ->descriptionIcon('heroicon-m-trophy')
+                ->color('success'),
+            
+            Stat::make('Top Referrer', $topReferrer ? 
+                    parse_url($topReferrer->referer, PHP_URL_HOST) ?? 'Direct' : 'Direct')
+                ->description(($topReferrer->count ?? 0) . ' referrals')
+                ->descriptionIcon('heroicon-m-arrow-top-right-on-square')
+                ->color('warning'),
+            
+            Stat::make('User Engagement', $authPercent . '% Logged In')
+                ->description($authenticatedVisits . ' authenticated visits')
+                ->descriptionIcon('heroicon-m-user-circle')
+                ->color($authPercent > 30 ? 'success' : 'danger'),
+            
+            Stat::make('Peak Hour Today', $peakHourFormatted)
+                ->description(($peakHour->count ?? 0) . ' visits at peak')
+                ->descriptionIcon('heroicon-m-clock')
+                ->color('info'),
+            
+            Stat::make('Bounce Rate', $bounceRate . '%')
+                ->description($singlePageVisitors . ' single-page visits')
+                ->descriptionIcon('heroicon-m-arrow-uturn-left')
+                ->color($bounceRate < 40 ? 'success' : ($bounceRate < 70 ? 'warning' : 'danger')),
         ];
     }
 
@@ -91,8 +172,9 @@ class UrlVisitStats extends StatsOverviewWidget
     {
         // Get hourly visits for today
         $hourlyVisits = UrlVisit::whereDate('created_at', today())
-            ->select(DB::raw('EXTRACT(HOUR FROM created_at) as hour'), DB::raw('count(*) as count'))
+            ->select(DB::raw('EXTRACT(HOUR FROM created_at)::integer as hour'), DB::raw('count(*) as count'))
             ->groupBy('hour')
+            ->get()
             ->pluck('count', 'hour')
             ->toArray();
         
