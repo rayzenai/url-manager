@@ -3,6 +3,7 @@
 namespace RayzenAI\UrlManager\Filament\Resources;
 
 use RayzenAI\UrlManager\Filament\Resources\UrlVisitResource\Pages;
+use RayzenAI\UrlManager\Filament\Resources\UrlVisitResource\Widgets;
 use RayzenAI\UrlManager\Models\UrlVisit;
 use Filament\Resources\Resource;
 use Filament\Tables;
@@ -140,5 +141,12 @@ class UrlVisitResource extends Resource
     public static function canCreate(): bool
     {
         return false;
+    }
+    
+    public static function getWidgets(): array
+    {
+        return [
+            Widgets\UrlVisitStats::class,
+        ];
     }
 }

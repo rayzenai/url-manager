@@ -13,4 +13,11 @@ class ListUrlVisits extends ListRecords
     {
         return [];
     }
+    
+    protected function getHeaderWidgets(): array
+    {
+        return [
+            UrlVisitResource\Widgets\UrlVisitStats::class,
+        ];
+    }
 }
