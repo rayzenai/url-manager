@@ -21,7 +21,7 @@ return new class extends Migration
             $table->string('status')->default('active')->index();
             $table->string('redirect_to')->nullable();
             $table->integer('redirect_code')->default(301);
-            $table->json('meta')->nullable();
+            $table->jsonb('meta')->nullable();
             $table->unsignedBigInteger('visits')->default(0);
             $table->timestamp('last_visited_at')->nullable();
             $table->timestamp('last_modified_at')->nullable();
@@ -29,7 +29,7 @@ return new class extends Migration
             
             // Composite indexes for performance
             $table->index(['status', 'type']);
-            
+
             // Note: morphs() already create the followigng index
             // $table->index(['urable_type', 'urable_id']); 
         });
