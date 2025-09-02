@@ -20,6 +20,7 @@ class UrlManagerServiceProvider extends PackageServiceProvider
             ->hasMigrations([
                 '2025_01_01_000000_create_urls_table',
                 '2025_01_01_000001_create_google_search_console_settings_table',
+                '2025_09_01_000002_create_url_visits_table',
             ])
             ->hasCommands([
                 GenerateSitemap::class,

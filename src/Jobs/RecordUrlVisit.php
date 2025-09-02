@@ -8,6 +8,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use RayzenAI\UrlManager\Models\Url;
+use RayzenAI\UrlManager\Models\UrlVisit;
 
 class RecordUrlVisit implements ShouldQueue
 {
@@ -32,7 +33,10 @@ class RecordUrlVisit implements ShouldQueue
      */
     public function handle(): void
     {
-        // Record the URL visit
+        // Create detailed visit record using UrlVisit model
+        $visit = UrlVisit::createFromRequest($this->url, $this->userId, $this->metadata);
+        
+        // Also record the basic URL visit count
         $this->url->recordVisit();
         
         // Get the related model
@@ -45,6 +49,7 @@ class RecordUrlVisit implements ShouldQueue
         // Fire event for custom handling (e.g., entity view tracking)
         event('url-manager.visit.recorded', [
             'url' => $this->url,
+            'visit' => $visit,
             'model' => $model,
             'user_id' => $this->userId,
             'metadata' => $this->metadata,
