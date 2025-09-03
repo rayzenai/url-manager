@@ -3,7 +3,6 @@
 namespace RayzenAI\UrlManager\Commands;
 
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Schema;
 use RayzenAI\UrlManager\Models\Url;
 use RayzenAI\UrlManager\Traits\HasUrl;
 
@@ -43,13 +42,13 @@ class GenerateUrlsForModels extends Command
         $model = new $modelClass;
         $count = 0;
         
-        // Check if model has is_active field
-        $hasIsActive = Schema::hasColumn($model->getTable(), 'is_active');
+        // Check if model has an active field for filtering
+        $activeField = method_exists($model, 'activeUrlField') ? $model->activeUrlField() : null;
         
         $query = $modelClass::query();
         
-        if ($hasIsActive) {
-            $query->where('is_active', true);
+        if ($activeField) {
+            $query->where($activeField, true);
         }
         
         $query->whereDoesntHave('url')->chunk(100, function ($models) use (&$count, $modelClass) {

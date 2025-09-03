@@ -79,7 +79,7 @@ class Product extends Model
         'name',
         'slug',
         'description',
-        'is_active', // Required for URL visibility control
+        'is_active', // Or 'active' - configurable via activeUrlField() method
         // ... other fields
     ];
 
@@ -90,6 +90,15 @@ class Product extends Model
     public function webUrlPath(): string
     {
         return 'products/' . $this->slug;
+    }
+
+    /**
+     * Define the active field name (optional)
+     * Override this if your model uses 'active' instead of 'is_active'
+     */
+    public function activeUrlField(): string
+    {
+        return 'active'; // Default is 'is_active'
     }
 
     /**
@@ -140,6 +149,20 @@ Or for a specific model:
 
 ```bash
 php artisan urls:generate "App\Models\Product"
+```
+
+#### Handling Large Datasets
+
+For large datasets with thousands of records, you may need to increase PHP memory and execution limits:
+
+```bash
+# Increase PHP memory limit and execution time
+php -d memory_limit=2G -d max_execution_time=0 artisan urls:generate
+
+# Or generate for specific models one at a time
+php artisan urls:generate "App\Models\Product"
+php artisan urls:generate "App\Models\Category"
+php artisan urls:generate "App\Models\Blog"
 ```
 
 ### Creating Redirects
@@ -492,13 +515,14 @@ The package provides two dashboard widgets:
 
 ## Best Practices
 
-1. **Always include `is_active` field** in models using HasUrl trait
+1. **Always include an active field** (`is_active` or `active`) in models using HasUrl trait
 2. **Implement `webUrlPath()` method** to define URL structure
-3. **Use meaningful slugs** for SEO optimization
-4. **Set up redirects** when changing URL structures
-5. **Generate sitemaps regularly** (via cron job)
-6. **Monitor redirect chains** to avoid deep nesting
-7. **Use appropriate HTTP status codes** (301 for permanent, 302 for temporary)
+3. **Override `activeUrlField()` method** if using a field name other than `is_active`
+4. **Use meaningful slugs** for SEO optimization
+5. **Set up redirects** when changing URL structures
+6. **Generate sitemaps regularly** (via cron job)
+7. **Monitor redirect chains** to avoid deep nesting
+8. **Use appropriate HTTP status codes** (301 for permanent, 302 for temporary)
 
 ## Testing
 
@@ -514,8 +538,30 @@ composer test
 
 Ensure your model:
 - Uses the `HasUrl` trait
-- Has an `is_active` field
+- Has an active field (`is_active` or `active` - configurable via `activeUrlField()` method)
 - Implements the `webUrlPath()` method
+
+### Common URL Generation Issues
+
+1. **"URL with slug already exists for different model" Warning**
+   - This occurs when multiple models have the same slug
+   - Solution: Ensure unique slugs within each model type
+   - The command skips duplicates to maintain data integrity
+
+2. **Not all URLs are generated**
+   - Check for duplicate slugs in your data
+   - Verify models have unique slug values
+   - For large datasets, increase PHP memory limit
+   - Run the command multiple times if needed
+
+3. **Models using 'active' instead of 'is_active'**
+   - Override the `activeUrlField()` method in your model:
+   ```php
+   public function activeUrlField(): string
+   {
+       return 'active'; // Your model's active field name
+   }
+   ```
 
 ### Sitemap not accessible
 

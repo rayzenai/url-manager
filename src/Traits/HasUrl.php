@@ -48,6 +48,15 @@ use RayzenAI\UrlManager\Models\Url;
 trait HasUrl
 {
     /**
+     * Get the field name that determines if the model is active for URL purposes
+     * Override this in your model if using a different field name
+     */
+    public function activeUrlField(): string
+    {
+        return 'is_active';
+    }
+
+    /**
      * Boot the HasUrl trait
      */
     protected static function bootHasUrl(): void
@@ -61,10 +70,12 @@ trait HasUrl
 
         // Update URL when model is updated
         static::updated(function ($model) {
+            $activeField = $model->activeUrlField();
+            
             // Check if URL relationship is loaded to avoid lazy loading issues
             if ($model->relationLoaded('url') && $model->url) {
                 // Update URL status based on model's active status
-                if ($model->wasChanged('is_active')) {
+                if ($model->wasChanged($activeField)) {
                     $model->updateUrlStatus();
                 }
                 
@@ -143,9 +154,11 @@ trait HasUrl
      */
     protected function shouldHaveUrl(): bool
     {
-        // Check if model is active (if has is_active field)
-        if (property_exists($this, 'fillable') && in_array('is_active', $this->fillable)) {
-            return $this->is_active ?? false;
+        $activeField = $this->activeUrlField();
+        
+        // Check if model has the active field
+        if (property_exists($this, 'fillable') && in_array($activeField, $this->fillable)) {
+            return $this->{$activeField} ?? false;
         }
 
         return true;
@@ -156,7 +169,8 @@ trait HasUrl
      */
     public function isActiveForUrl(): bool
     {
-        return $this->is_active ?? true;
+        $activeField = $this->activeUrlField();
+        return $this->{$activeField} ?? true;
     }
 
     /**
