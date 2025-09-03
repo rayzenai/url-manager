@@ -53,10 +53,30 @@ class TrackingController extends Controller
             ]);
         }
         
+        // Try to authenticate using bearer token if present
+        $userId = null;
+        if ($request->hasHeader('Authorization')) {
+            $token = str_replace('Bearer ', '', $request->header('Authorization'));
+            try {
+                // Use Sanctum to authenticate the token
+                $user = \Laravel\Sanctum\PersonalAccessToken::findToken($token)?->tokenable;
+                if ($user) {
+                    $userId = $user->id;
+                }
+            } catch (\Exception $e) {
+                // Token authentication failed, continue as guest
+            }
+        }
+        
+        // Fall back to session auth if no bearer token
+        if (!$userId) {
+            $userId = auth()->id();
+        }
+        
         // Dispatch job to record visit asynchronously
         RecordUrlVisit::dispatch(
             $url,
-            auth()->id(),
+            $userId,
             [
                 'tracked_via' => 'api_endpoint',
                 'original_path' => $path,
