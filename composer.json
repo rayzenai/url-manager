@@ -17,7 +17,8 @@
         "spatie/laravel-package-tools": "^1.16",
         "spatie/laravel-sitemap": "^7.0",
         "google/apiclient": "^2.0",
-        "jenssegers/agent": "^2.6"
+        "jenssegers/agent": "^2.6",
+        "laravel/sanctum": "^4.0"
     },
     "require-dev": {},
     "autoload": {
