@@ -3,6 +3,7 @@
 namespace RayzenAI\UrlManager;
 
 use Illuminate\Routing\Router;
+use Illuminate\Support\Facades\Route;
 use RayzenAI\UrlManager\Commands\GenerateSitemap;
 use RayzenAI\UrlManager\Commands\GenerateUrlsForModels;
 use RayzenAI\UrlManager\Commands\SubmitSitemapToGoogle;
@@ -19,6 +20,7 @@ class UrlManagerServiceProvider extends PackageServiceProvider
             ->hasConfigFile()
             ->hasViews()
             ->hasRoute('web')
+            ->hasRoute('api')
             ->hasMigrations([
                 '2025_01_01_000000_create_urls_table',
                 '2025_01_01_000001_create_google_search_console_settings_table',
@@ -34,6 +36,17 @@ class UrlManagerServiceProvider extends PackageServiceProvider
     public function packageBooted()
     {
         $this->registerMiddleware();
+        $this->registerApiRoutes();
+    }
+    
+    protected function registerApiRoutes()
+    {
+        Route::group([
+            'prefix' => 'api/url-manager',
+            'middleware' => 'api',
+        ], function () {
+            $this->loadRoutesFrom(__DIR__ . '/../routes/api.php');
+        });
     }
     
     protected function registerMiddleware()

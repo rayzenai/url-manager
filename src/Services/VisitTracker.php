@@ -52,8 +52,8 @@ class VisitTracker
             return;
         }
         
-        // Find URL record by slug
-        $url = Url::where('slug', $slug)
+        // Find URL record by slug (case-insensitive)
+        $url = Url::whereRaw('LOWER(slug) = ?', [strtolower($slug)])
             ->where('status', Url::STATUS_ACTIVE)
             ->first();
             
