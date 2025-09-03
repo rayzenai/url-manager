@@ -51,7 +51,8 @@ class GenerateUrlsForModels extends Command
             $query->where($activeField, true);
         }
         
-        $query->whereDoesntHave('url')->chunk(100, function ($models) use (&$count, $modelClass) {
+        // Use chunkById to avoid pagination issues when creating relationships
+        $query->whereDoesntHave('url')->chunkById(100, function ($models) use (&$count, $modelClass) {
             foreach ($models as $model) {
                 if (!method_exists($model, 'webUrlPath')) {
                     continue;
@@ -86,7 +87,7 @@ class GenerateUrlsForModels extends Command
                     $this->error("Failed to create URL for {$modelClass} ID {$model->id}: " . $e->getMessage());
                 }
             }
-        });
+        }, 'id');
         
         $this->info("Generated {$count} URLs for {$modelClass}");
     }
