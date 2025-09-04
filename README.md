@@ -18,6 +18,7 @@ A comprehensive Laravel package for managing URLs, redirects, and sitemaps with 
 - PHP 8.2+
 - Laravel 11.0+ or 12.0+
 - Filament 4.0+
+- kirantimsina/file-manager (for media SEO functionality)
 
 ## Installation
 
@@ -26,6 +27,19 @@ A comprehensive Laravel package for managing URLs, redirects, and sitemaps with 
 ```bash
 composer require rayzenai/url-manager
 ```
+
+### Optional: Install File Manager for Enhanced SEO
+
+For complete media SEO functionality, install the companion file-manager package:
+
+```bash
+composer require kirantimsina/file-manager
+```
+
+This package provides:
+- Media metadata tracking with SEO titles
+- Image optimization and compression
+- Enhanced file upload components for Filament
 
 ### Step 2: Publish Configuration
 
@@ -483,6 +497,88 @@ Event::listen('url-manager.url.visited', function ($url, $model) {
     Log::info("URL visited: {$url->slug}");
 });
 ```
+
+### Media SEO with File Manager
+
+If you have the `kirantimsina/file-manager` package installed, you can enhance your SEO by managing media metadata:
+
+#### Populate SEO Titles for Images
+
+Generate SEO-friendly titles for all your media files:
+
+```bash
+# Generate SEO titles for all media
+php artisan file-manager:populate-seo-titles
+
+# Generate for specific model only
+php artisan file-manager:populate-seo-titles --model=Product
+
+# Dry run to see what would be generated
+php artisan file-manager:populate-seo-titles --dry-run
+
+# Overwrite existing SEO titles
+php artisan file-manager:populate-seo-titles --overwrite
+```
+
+The command automatically generates SEO-friendly titles based on:
+- Parent model's name/title
+- Media field context (e.g., "Featured Image", "Gallery")
+- Clean filename processing
+- Removes special characters from beginning/end for cleaner SEO
+
+#### Image Sitemap Generation
+
+Generate a dedicated image sitemap for better image SEO:
+
+```bash
+# Generate image sitemap with optimized SEO titles
+php artisan sitemap:generate-images
+
+# Include specific models only
+php artisan sitemap:generate-images --model=Product --model=Blog
+
+# Set custom maximum images per sitemap file
+php artisan sitemap:generate-images --max-urls=5000
+```
+
+**Features:**
+- Uses pre-populated SEO titles from media_metadata table for optimal performance
+- Only includes images with meaningful SEO titles (excludes internal/system images)
+- Automatically creates index files for large image collections
+- Generates Google Image sitemap format with proper XML namespace
+- Includes image location, title, and caption metadata
+
+**Performance Optimization:**
+- Direct database queries avoid expensive polymorphic lookups
+- Chunked processing for handling millions of images
+- Only processes images from SEO-enabled models (configured in file-manager)
+
+#### Configuration
+
+Control which models receive SEO titles in `config/file-manager.php`:
+
+```php
+'seo' => [
+    'enabled_models' => [
+        'App\Models\Product',
+        'App\Models\Category',
+        'App\Models\Blog',
+        // Models that should have SEO titles
+    ],
+    'excluded_models' => [
+        'App\Models\User',
+        'App\Models\Order',
+        // Models that should NOT have SEO titles
+    ],
+],
+```
+
+#### Media Metadata in Sitemaps
+
+When using file-manager, media files are automatically included in your sitemaps with proper SEO titles and metadata for better search engine indexing. The integration:
+- Respects model configuration (enabled/excluded models)
+- Uses cached SEO titles for fast generation
+- Supports large-scale image collections with automatic file splitting
 
 ### Multiple Sitemap Support
 

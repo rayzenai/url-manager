@@ -75,8 +75,16 @@ class ListUrls extends ListRecords
                         ->action(function () {
                             // Get counts
                             $urlCount = \RayzenAI\UrlManager\Models\Url::active()->count();
+                            
+                            // Exclude internal image types
+                            $excludedTypes = [
+                                'App\\Models\\CartItem',
+                                'App\\Models\\AttachmentFile',
+                            ];
+                            
                             $imageCount = \Illuminate\Support\Facades\DB::table('media_metadata')
                                 ->where('mime_type', 'LIKE', 'image/%')
+                                ->whereNotIn('mediable_type', $excludedTypes)
                                 ->count();
                             $videoCount = \Illuminate\Support\Facades\DB::table('media_metadata')
                                 ->where('mime_type', 'LIKE', 'video/%')
@@ -124,9 +132,15 @@ class ListUrls extends ListRecords
                         ->modalDescription('This will generate an image sitemap from all images in the media metadata.')
                         ->modalSubmitActionLabel('Generate')
                         ->action(function () {
-                            // Get the count of images
+                            // Get the count of images (excluding CartItem and AttachmentFile)
+                            $excludedTypes = [
+                                'App\\Models\\CartItem',
+                                'App\\Models\\AttachmentFile',
+                            ];
+                            
                             $imageCount = \Illuminate\Support\Facades\DB::table('media_metadata')
                                 ->where('mime_type', 'LIKE', 'image/%')
+                                ->whereNotIn('mediable_type', $excludedTypes)
                                 ->count();
                             
                             if ($imageCount === 0) {

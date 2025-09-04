@@ -88,6 +88,36 @@ return [
             'page' => 0.6,
             'blog' => 0.6,
         ],
+        
+        /*
+        |--------------------------------------------------------------------------
+        | Image Sitemap Configuration
+        |--------------------------------------------------------------------------
+        |
+        | Configure which models to include or exclude in image sitemaps
+        |
+        | Note: Image sitemap generation requires the kirantimsina/file-manager package.
+        | For optimal performance, run 'php artisan file-manager:populate-seo-titles' 
+        | to pre-populate SEO titles and avoid polymorphic queries during sitemap generation.
+        |
+        */
+        'images' => [
+            'enabled' => true,
+            'max_images_per_file' => 5000,
+        ],
+        
+        /*
+        |--------------------------------------------------------------------------
+        | Video Sitemap Configuration
+        |--------------------------------------------------------------------------
+        |
+        | Configure which models to include or exclude in video sitemaps
+        |
+        */
+        'videos' => [
+            'enabled' => true,
+            'max_videos_per_file' => 5000,
+        ],
     ],
 
     /*

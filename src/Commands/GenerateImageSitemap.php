@@ -22,12 +22,15 @@ class GenerateImageSitemap extends Command
         $this->info('Generating image sitemap...');
         
         $limit = (int) $this->option('limit');
-        $maxPerFile = config('url-manager.sitemap.max_images_per_file', 5000);
+        $maxPerFile = config('url-manager.sitemap.images.max_images_per_file', 5000);
         
-        // Get all images from media_metadata
-        $totalImages = DB::table('media_metadata')
+        
+        // Build the query based on configuration
+        $query = DB::table('media_metadata')
             ->where('mime_type', 'LIKE', 'image/%')
-            ->count();
+            ->whereNotNull('seo_title'); // Only include images with SEO titles
+        
+        $totalImages = $query->count();
         
         if ($totalImages === 0) {
             $this->warn('No images found in media metadata.');
@@ -87,9 +90,12 @@ class GenerateImageSitemap extends Command
     
     protected function getImageData(int $limit, int $offset = 0)
     {
-        return DB::table('media_metadata')
+       
+        $query = DB::table('media_metadata')
             ->where('mime_type', 'LIKE', 'image/%')
-            ->orderBy('created_at', 'desc')
+            ->whereNotNull('seo_title'); // Only include images with SEO titles
+        
+        return $query->orderBy('created_at', 'desc')
             ->offset($offset)
             ->limit($limit)
             ->get();
@@ -140,6 +146,8 @@ class GenerateImageSitemap extends Command
                     // Try to extract title from metadata or use file name
                     $title = $this->getImageTitle($image);
                     if ($title) {
+                        // Remove control characters that are invalid in XML
+                        $title = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/', '', $title);
                         $xml .= '      <image:title>' . htmlspecialchars($title) . '</image:title>' . PHP_EOL;
                     }
                     
@@ -210,6 +218,68 @@ class GenerateImageSitemap extends Command
     
     protected function getImageTitle($image): ?string
     {
+        // First check if we have a pre-populated seo_title field
+        if (!empty($image->seo_title)) {
+            return $image->seo_title;
+        }
+        
+        // If seo_title is not available, fall back to polymorphic relationship lookup
+        // This maintains backward compatibility for systems without the seo_title field
+        if (!empty($image->mediable_type) && !empty($image->mediable_id)) {
+            try {
+                // Get the parent model
+                $parentModel = $image->mediable_type::find($image->mediable_id);
+                
+                if ($parentModel) {
+                    // Check if we have a custom title mapping for this model type
+                    $titleMappings = config('url-manager.sitemap.images.title_mappings', []);
+                    $modelType = str_replace('\\\\', '\\', $image->mediable_type); // Normalize the model type
+                    
+                    if (isset($titleMappings[$modelType])) {
+                        $mapping = $titleMappings[$modelType];
+                        
+                        // Check if it's a template string with placeholders
+                        if (str_contains($mapping, '{')) {
+                            // Replace placeholders with actual field values
+                            return preg_replace_callback('/\{(\w+)\}/', function($matches) use ($parentModel) {
+                                $field = $matches[1];
+                                return $parentModel->$field ?? '';
+                            }, $mapping);
+                        }
+                        
+                        // It's a pipe-separated list of fallback fields
+                        $fields = explode('|', $mapping);
+                        foreach ($fields as $field) {
+                            // Check if field has a character limit (e.g., "message:60")
+                            if (str_contains($field, ':')) {
+                                [$fieldName, $limit] = explode(':', $field);
+                                if (isset($parentModel->$fieldName) && !empty($parentModel->$fieldName)) {
+                                    return substr($parentModel->$fieldName, 0, (int)$limit);
+                                }
+                            } elseif (isset($parentModel->$field) && !empty($parentModel->$field)) {
+                                return $parentModel->$field;
+                            } elseif (!str_contains($field, '->') && !isset($parentModel->$field)) {
+                                // If it's not a field and doesn't contain ->, it might be a default value
+                                if (!empty(trim($field)) && !property_exists($parentModel, $field)) {
+                                    return $field; // Use as literal default value
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Fallback to generic field checking if no custom mapping
+                    $commonFields = ['meta_title', 'title', 'name', 'product_name', 'heading', 'full_name'];
+                    foreach ($commonFields as $field) {
+                        if (isset($parentModel->$field) && !empty($parentModel->$field)) {
+                            return $parentModel->$field;
+                        }
+                    }
+                }
+            } catch (\Exception $e) {
+                // If we can't load the parent model, fall back to other methods
+            }
+        }
+        
         // Try to extract title from metadata JSON
         if (!empty($image->metadata)) {
             $metadata = is_string($image->metadata) ? json_decode($image->metadata, true) : $image->metadata;
@@ -221,7 +291,7 @@ class GenerateImageSitemap extends Command
             }
         }
         
-        // Use file name without extension as fallback
+        // Use file name without extension as last fallback
         if (!empty($image->file_name)) {
             $fileName = pathinfo($image->file_name, PATHINFO_FILENAME);
             // Clean up the file name to make it more readable

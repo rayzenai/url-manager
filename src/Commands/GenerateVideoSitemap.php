@@ -18,16 +18,23 @@ class GenerateVideoSitemap extends Command
             $this->error('Sitemap generation is disabled in configuration.');
             return 1;
         }
+        
+        if (!config('url-manager.sitemap.videos.enabled', true)) {
+            $this->error('Video sitemap generation is disabled in configuration.');
+            return 1;
+        }
 
         $this->info('Generating video sitemap...');
         
         $limit = (int) $this->option('limit');
-        $maxPerFile = config('url-manager.sitemap.max_videos_per_file', 5000);
+        $maxPerFile = config('url-manager.sitemap.videos.max_videos_per_file', 5000);
         
-        // Get all videos from media_metadata
-        $totalVideos = DB::table('media_metadata')
-            ->where('mime_type', 'LIKE', 'video/%')
-            ->count();
+       
+        // Build the query based on configuration
+        $query = DB::table('media_metadata')
+            ->where('mime_type', 'LIKE', 'video/%');
+        
+        $totalVideos = $query->count();
         
         if ($totalVideos === 0) {
             $this->warn('No videos found in media metadata.');
@@ -87,9 +94,11 @@ class GenerateVideoSitemap extends Command
     
     protected function getVideoData(int $limit, int $offset = 0)
     {
-        return DB::table('media_metadata')
-            ->where('mime_type', 'LIKE', 'video/%')
-            ->orderBy('created_at', 'desc')
+       
+        $query = DB::table('media_metadata')
+            ->where('mime_type', 'LIKE', 'video/%');
+        
+        return $query->orderBy('created_at', 'desc')
             ->offset($offset)
             ->limit($limit)
             ->get();
@@ -140,8 +149,10 @@ class GenerateVideoSitemap extends Command
                     
                     // Required fields
                     $xml .= '      <video:thumbnail_loc>' . htmlspecialchars($thumbnailUrl) . '</video:thumbnail_loc>' . PHP_EOL;
-                    $xml .= '      <video:title>' . htmlspecialchars($video->title ?: 'Video') . '</video:title>' . PHP_EOL;
-                    $xml .= '      <video:description>' . htmlspecialchars($video->alt_text ?: $video->title ?: 'Video content') . '</video:description>' . PHP_EOL;
+                    
+                    $title = $this->getVideoTitle($video);
+                    $xml .= '      <video:title>' . htmlspecialchars($title ?: 'Video') . '</video:title>' . PHP_EOL;
+                    $xml .= '      <video:description>' . htmlspecialchars($video->alt_text ?: $title ?: 'Video content') . '</video:description>' . PHP_EOL;
                     $xml .= '      <video:content_loc>' . htmlspecialchars($videoUrl) . '</video:content_loc>' . PHP_EOL;
                     
                     // Optional fields
@@ -188,29 +199,34 @@ class GenerateVideoSitemap extends Command
     
     protected function getVideoUrl($video): ?string
     {
-        // Get the configured frontend URL
-        $settings = \RayzenAI\UrlManager\Models\GoogleSearchConsoleSetting::getSettings();
-        $siteUrl = rtrim($settings->frontend_url ?: url('/'), '/');
-        
-        // Check if we have the file path
-        if (!empty($video->file_path)) {
+        // Use the FileManager facade to get the correct media URL
+        if (!empty($video->file_name)) {
+            // Use FileManager to get the full URL (handles S3, local storage, etc.)
+            if (class_exists(\Kirantimsina\FileManager\Facades\FileManager::class)) {
+                return \Kirantimsina\FileManager\Facades\FileManager::getMediaPath($video->file_name);
+            }
+            
+            // Fallback to manual URL construction if FileManager not available
+            $settings = \RayzenAI\UrlManager\Models\GoogleSearchConsoleSetting::getSettings();
+            $siteUrl = rtrim($settings->frontend_url ?: url('/'), '/');
+            
             // If it's already a full URL, return it
-            if (filter_var($video->file_path, FILTER_VALIDATE_URL)) {
-                return $video->file_path;
+            if (filter_var($video->file_name, FILTER_VALIDATE_URL)) {
+                return $video->file_name;
             }
             
             // If it starts with storage/, prepend the site URL
-            if (str_starts_with($video->file_path, 'storage/')) {
-                return $siteUrl . '/' . $video->file_path;
+            if (str_starts_with($video->file_name, 'storage/')) {
+                return $siteUrl . '/' . $video->file_name;
             }
             
             // If it starts with /, append to site URL
-            if (str_starts_with($video->file_path, '/')) {
-                return $siteUrl . $video->file_path;
+            if (str_starts_with($video->file_name, '/')) {
+                return $siteUrl . $video->file_name;
             }
             
             // Otherwise, assume it needs /storage/ prefix
-            return $siteUrl . '/storage/' . $video->file_path;
+            return $siteUrl . '/storage/' . $video->file_name;
         }
         
         return null;
@@ -262,5 +278,49 @@ class GenerateVideoSitemap extends Command
         $xml .= '</sitemapindex>' . PHP_EOL;
         
         return $xml;
+    }
+    
+    protected function getVideoTitle($video): ?string
+    {
+        // Try to get title from the parent model using polymorphic relationship
+        if (!empty($video->mediable_type) && !empty($video->mediable_id)) {
+            try {
+                // Get the parent model
+                $parentModel = $video->mediable_type::find($video->mediable_id);
+                
+                if ($parentModel) {
+                    // For videos, we can reuse similar logic but might have different fields
+                    // Check common title/name fields
+                    $commonFields = ['meta_title', 'title', 'name', 'video_title', 'heading'];
+                    foreach ($commonFields as $field) {
+                        if (isset($parentModel->$field) && !empty($parentModel->$field)) {
+                            return $parentModel->$field;
+                        }
+                    }
+                }
+            } catch (\Exception $e) {
+                // If we can't load the parent model, fall back to other methods
+            }
+        }
+        
+        // Try to extract title from metadata JSON
+        if (!empty($video->metadata)) {
+            $metadata = is_string($video->metadata) ? json_decode($video->metadata, true) : $video->metadata;
+            if (isset($metadata['title'])) {
+                return $metadata['title'];
+            }
+            if (isset($metadata['alt'])) {
+                return $metadata['alt'];
+            }
+        }
+        
+        // Use file name without extension as last fallback
+        if (!empty($video->file_name)) {
+            $fileName = pathinfo($video->file_name, PATHINFO_FILENAME);
+            // Clean up the file name to make it more readable
+            return str_replace(['-', '_'], ' ', $fileName);
+        }
+        
+        return null;
     }
 }

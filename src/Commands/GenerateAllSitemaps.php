@@ -30,10 +30,18 @@ class GenerateAllSitemaps extends Command
         $this->info("✓ Generated URL sitemap with {$urlCount} URLs");
         $sitemaps[] = 'sitemap.xml';
         
-        // Generate image sitemap if there are images
-        $imageCount = DB::table('media_metadata')
-            ->where('mime_type', 'LIKE', 'image/%')
-            ->count();
+        // Generate image sitemap if enabled and there are images
+        if (!config('url-manager.sitemap.images.enabled', true)) {
+            $this->info('Image sitemap generation is disabled in configuration.');
+            $imageCount = 0;
+        } else {
+            
+            $query = DB::table('media_metadata')
+                ->where('mime_type', 'LIKE', 'image/%')
+                ->whereNotNull('seo_title'); // Only count images with SEO titles
+            
+            $imageCount = $query->count();
+        }
             
         if ($imageCount > 0) {
             $this->info("Generating image sitemap for {$imageCount} images...");
@@ -44,10 +52,17 @@ class GenerateAllSitemaps extends Command
             $this->info('No images found, skipping image sitemap.');
         }
         
-        // Generate video sitemap if there are videos
-        $videoCount = DB::table('media_metadata')
-            ->where('mime_type', 'LIKE', 'video/%')
-            ->count();
+        // Generate video sitemap if enabled and there are videos
+        if (!config('url-manager.sitemap.videos.enabled', true)) {
+            $this->info('Video sitemap generation is disabled in configuration.');
+            $videoCount = 0;
+        } else {
+        
+            $query = DB::table('media_metadata')
+                ->where('mime_type', 'LIKE', 'video/%');
+            
+            $videoCount = $query->count();
+        }
             
         if ($videoCount > 0) {
             $this->info("Generating video sitemap for {$videoCount} videos...");
