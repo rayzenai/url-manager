@@ -55,76 +55,6 @@ class GoogleSearchConsoleSettings extends Page implements HasForms
     {
         return $form
             ->schema([
-                Section::make('Google Search Console Configuration')
-                    ->description('Configure Google Search Console API integration for automatic sitemap submission.')
-                    ->schema([
-                        Forms\Components\Toggle::make('enabled')
-                            ->label('Enable Google Search Console Integration')
-                            ->helperText('Enable API integration for sitemap submission and search analytics')
-                            ->live(),
-                            
-                        Forms\Components\TextInput::make('site_url')
-                            ->label('Google Search Console Property')
-                            ->placeholder('https://example.com or sc-domain:example.com')
-                            ->helperText('Enter your Google Search Console property (e.g., "https://www.example.com" or "sc-domain:example.com")')
-                            ->required(),
-                            
-                        Forms\Components\TextInput::make('frontend_url')
-                            ->label('Frontend Website URL')
-                            ->placeholder('https://example.com')
-                            ->helperText('Enter your actual website URL for sitemap generation (e.g., "https://www.example.com")')
-                            ->url()
-                            ->required(),
-                    ]),
-                    
-                Section::make('Service Account Configuration')
-                    ->description('Configure your Google Service Account credentials.')
-                    ->schema([
-                        Forms\Components\Textarea::make('credentials_json')
-                            ->label('Service Account JSON')
-                            ->placeholder(fn (Get $get) => 
-                                $get('has_saved_credentials') 
-                                    ? 'Credentials are already saved. Paste new JSON here to update them...'
-                                    : 'Paste your entire Service Account JSON here...'
-                            )
-                            ->helperText(fn (Get $get) => 
-                                $get('has_saved_credentials')
-                                    ? '✅ Credentials are saved securely in the database. Leave empty to keep existing credentials.'
-                                    : 'Paste the complete JSON content from your Service Account credentials file'
-                            )
-                            ->rows(10)
-                            ->required(fn (Get $get) => !$get('has_saved_credentials'))
-                            ->afterStateUpdated(function ($state, Set $set) {
-                                if ($state) {
-                                    try {
-                                        // Validate and parse JSON
-                                        $json = json_decode($state, true);
-                                        if (json_last_error() === JSON_ERROR_NONE && isset($json['client_email'])) {
-                                            $set('service_account_email', $json['client_email']);
-                                        }
-                                    } catch (\Exception $e) {
-                                        // Invalid JSON, ignore
-                                    }
-                                }
-                            })
-                            ->live(),
-                            
-                        Forms\Components\Hidden::make('has_saved_credentials'),
-                            
-                        Forms\Components\TextInput::make('service_account_email')
-                            ->label('Service Account Email')
-                            ->email()
-                            ->placeholder('service-account@project.iam.gserviceaccount.com')
-                            ->helperText('The email address of your service account (extracted from JSON)')
-                            ->disabled()
-                            ->dehydrated(),
-                            
-                        TextEntry::make('setup_instructions')
-                            ->label('Setup Instructions')
-                            ->state(fn () => view('url-manager::filament.partials.service-account-instructions')),
-                    ])
-                    ->visible(fn (Get $get) => $get('enabled')),
-                    
                 Section::make('Actions')
                     ->schema([
                         Actions::make([
@@ -224,6 +154,76 @@ class GoogleSearchConsoleSettings extends Page implements HasForms
                                     (!empty($get('service_account_email')) || $get('has_saved_credentials'))
                                 ),
                         ]),
+                    ])
+                    ->visible(fn (Get $get) => $get('enabled')),
+                    
+                Section::make('Google Search Console Configuration')
+                    ->description('Configure Google Search Console API integration for automatic sitemap submission.')
+                    ->schema([
+                        Forms\Components\Toggle::make('enabled')
+                            ->label('Enable Google Search Console Integration')
+                            ->helperText('Enable API integration for sitemap submission and search analytics')
+                            ->live(),
+                            
+                        Forms\Components\TextInput::make('site_url')
+                            ->label('Google Search Console Property')
+                            ->placeholder('https://example.com or sc-domain:example.com')
+                            ->helperText('Enter your Google Search Console property (e.g., "https://www.example.com" or "sc-domain:example.com")')
+                            ->required(),
+                            
+                        Forms\Components\TextInput::make('frontend_url')
+                            ->label('Frontend Website URL')
+                            ->placeholder('https://example.com')
+                            ->helperText('Enter your actual website URL for sitemap generation (e.g., "https://www.example.com")')
+                            ->url()
+                            ->required(),
+                    ]),
+                    
+                Section::make('Service Account Configuration')
+                    ->description('Configure your Google Service Account credentials.')
+                    ->schema([
+                        Forms\Components\Textarea::make('credentials_json')
+                            ->label('Service Account JSON')
+                            ->placeholder(fn (Get $get) => 
+                                $get('has_saved_credentials') 
+                                    ? 'Credentials are already saved. Paste new JSON here to update them...'
+                                    : 'Paste your entire Service Account JSON here...'
+                            )
+                            ->helperText(fn (Get $get) => 
+                                $get('has_saved_credentials')
+                                    ? '✅ Credentials are saved securely in the database. Leave empty to keep existing credentials.'
+                                    : 'Paste the complete JSON content from your Service Account credentials file'
+                            )
+                            ->rows(10)
+                            ->required(fn (Get $get) => !$get('has_saved_credentials'))
+                            ->afterStateUpdated(function ($state, Set $set) {
+                                if ($state) {
+                                    try {
+                                        // Validate and parse JSON
+                                        $json = json_decode($state, true);
+                                        if (json_last_error() === JSON_ERROR_NONE && isset($json['client_email'])) {
+                                            $set('service_account_email', $json['client_email']);
+                                        }
+                                    } catch (\Exception $e) {
+                                        // Invalid JSON, ignore
+                                    }
+                                }
+                            })
+                            ->live(),
+                            
+                        Forms\Components\Hidden::make('has_saved_credentials'),
+                            
+                        Forms\Components\TextInput::make('service_account_email')
+                            ->label('Service Account Email')
+                            ->email()
+                            ->placeholder('service-account@project.iam.gserviceaccount.com')
+                            ->helperText('The email address of your service account (extracted from JSON)')
+                            ->disabled()
+                            ->dehydrated(),
+                            
+                        TextEntry::make('setup_instructions')
+                            ->label('Setup Instructions')
+                            ->state(fn () => view('url-manager::filament.partials.service-account-instructions')),
                     ])
                     ->visible(fn (Get $get) => $get('enabled')),
             ])
