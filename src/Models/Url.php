@@ -113,7 +113,14 @@ class Url extends Model
      */
     public function getAbsoluteUrl(): string
     {
-        return url($this->getFullPath());
+        // Use the configured frontend URL for sitemap generation
+        $settings = \RayzenAI\UrlManager\Models\GoogleSearchConsoleSetting::getSettings();
+        $baseUrl = $settings->frontend_url ?: url('/');
+        
+        // Ensure base URL doesn't have trailing slash
+        $baseUrl = rtrim($baseUrl, '/');
+        
+        return $baseUrl . $this->getFullPath();
     }
 
     /**

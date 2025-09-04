@@ -14,7 +14,8 @@ return new class extends Migration
         Schema::create('google_search_console_settings', function (Blueprint $table) {
             $table->id();
             $table->boolean('enabled')->default(false);
-            $table->string('site_url')->nullable();
+            $table->string('site_url')->nullable()->comment('Google Search Console property (e.g., sc-domain:example.com)');
+            $table->string('frontend_url')->nullable()->comment('Actual website URL for sitemap generation (e.g., https://example.com)');
             $table->text('credentials')->nullable()->comment('Encrypted JSON credentials');
             $table->string('service_account_email')->nullable();
             $table->timestamps();

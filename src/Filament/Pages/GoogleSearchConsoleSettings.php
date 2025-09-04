@@ -42,7 +42,8 @@ class GoogleSearchConsoleSettings extends Page implements HasForms
         
         $this->form->fill([
             'enabled' => $settings->enabled,
-            'site_url' => $settings->site_url ?: url('/'),
+            'site_url' => $settings->site_url ?: 'sc-domain:' . parse_url(url('/'), PHP_URL_HOST),
+            'frontend_url' => $settings->frontend_url ?: url('/'),
             'credentials_json' => '', // Don't show existing credentials for security
             'service_account_email' => $settings->service_account_email,
             'has_saved_credentials' => !empty($settings->credentials), // Track if credentials exist
@@ -62,11 +63,17 @@ class GoogleSearchConsoleSettings extends Page implements HasForms
                             ->live(),
                             
                         Forms\Components\TextInput::make('site_url')
-                            ->label('Site URL / Domain Property')
+                            ->label('Google Search Console Property')
                             ->placeholder('https://example.com or sc-domain:example.com')
-                            ->helperText('Enter your site URL or domain property (e.g., "https://www.example.com" or "sc-domain:example.com")')
-                            ->required()
-                            ->default(url('/')),
+                            ->helperText('Enter your Google Search Console property (e.g., "https://www.example.com" or "sc-domain:example.com")')
+                            ->required(),
+                            
+                        Forms\Components\TextInput::make('frontend_url')
+                            ->label('Frontend Website URL')
+                            ->placeholder('https://example.com')
+                            ->helperText('Enter your actual website URL for sitemap generation (e.g., "https://www.example.com")')
+                            ->url()
+                            ->required(),
                     ]),
                     
                 Section::make('Service Account Configuration')
@@ -169,6 +176,7 @@ class GoogleSearchConsoleSettings extends Page implements HasForms
         $updateData = [
             'enabled' => $data['enabled'],
             'site_url' => $data['site_url'],
+            'frontend_url' => $data['frontend_url'],
         ];
         
         // Only update credentials if new JSON was provided

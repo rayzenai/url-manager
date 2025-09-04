@@ -11,7 +11,8 @@ class GoogleSearchConsoleSetting extends Model
     
     protected $fillable = [
         'enabled',
-        'site_url', 
+        'site_url',
+        'frontend_url', 
         'credentials',
         'service_account_email',
     ];
@@ -26,10 +27,16 @@ class GoogleSearchConsoleSetting extends Model
      */
     public static function getSettings(): self
     {
-        return self::firstOrCreate([], [
-            'enabled' => false,
-            'site_url' => url('/'),
-        ]);
+        $settings = self::first();
+        
+        if (!$settings) {
+            $settings = self::create([
+                'enabled' => false,
+                'site_url' => config('app.url', url('/')),
+            ]);
+        }
+        
+        return $settings;
     }
     
     /**

@@ -91,6 +91,10 @@ class GenerateSitemap extends Command
     
     protected function generateXml($urls): string
     {
+        // Get the configured frontend URL for sitemap generation
+        $settings = \RayzenAI\UrlManager\Models\GoogleSearchConsoleSetting::getSettings();
+        $siteUrl = rtrim($settings->frontend_url ?: url('/'), '/');
+        
         $xml = '<?xml version="1.0" encoding="UTF-8"?>' . PHP_EOL;
         $xml .= '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" ';
         $xml .= 'xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" ';
@@ -99,7 +103,7 @@ class GenerateSitemap extends Command
         
         // Add homepage first
         $xml .= '  <url>' . PHP_EOL;
-        $xml .= '    <loc>' . url('/') . '</loc>' . PHP_EOL;
+        $xml .= '    <loc>' . $siteUrl . '/' . '</loc>' . PHP_EOL;
         $xml .= '    <lastmod>' . now()->toW3cString() . '</lastmod>' . PHP_EOL;
         $xml .= '    <changefreq>daily</changefreq>' . PHP_EOL;
         $xml .= '    <priority>1.0</priority>' . PHP_EOL;
@@ -129,12 +133,16 @@ class GenerateSitemap extends Command
     
     protected function generateSitemapIndex(int $numberOfFiles): string
     {
+        // Get the configured frontend URL for sitemap generation
+        $settings = \RayzenAI\UrlManager\Models\GoogleSearchConsoleSetting::getSettings();
+        $siteUrl = rtrim($settings->frontend_url ?: url('/'), '/');
+        
         $xml = '<?xml version="1.0" encoding="UTF-8"?>' . PHP_EOL;
         $xml .= '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' . PHP_EOL;
         
         for ($i = 0; $i < $numberOfFiles; $i++) {
             $xml .= '  <sitemap>' . PHP_EOL;
-            $xml .= '    <loc>' . url("/sitemap-{$i}.xml") . '</loc>' . PHP_EOL;
+            $xml .= '    <loc>' . $siteUrl . "/sitemap-{$i}.xml" . '</loc>' . PHP_EOL;
             $xml .= '    <lastmod>' . now()->toW3cString() . '</lastmod>' . PHP_EOL;
             $xml .= '  </sitemap>' . PHP_EOL;
         }
