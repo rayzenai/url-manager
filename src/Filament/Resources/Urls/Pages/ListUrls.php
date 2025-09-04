@@ -64,102 +64,128 @@ class ListUrls extends ListRecords
                 ->color('gray')
                 ->visible(fn () => config('url-manager.sitemap.enabled', true)),
             
-            Action::make('generate-sitemap')
-                ->label('Generate Sitemap')
+            ActionGroup::make([
+                    Action::make('generate-all-sitemaps')
+                        ->label('Generate All Sitemaps')
+                        ->icon(Heroicon::OutlinedArrowPath)
+                        ->requiresConfirmation()
+                        ->modalHeading('Generate All Sitemaps')
+                        ->modalDescription('This will generate URL, image, and video sitemaps.')
+                        ->modalSubmitActionLabel('Generate All')
+                        ->action(function () {
+                            // Get counts
+                            $urlCount = \RayzenAI\UrlManager\Models\Url::active()->count();
+                            $imageCount = \Illuminate\Support\Facades\DB::table('media_metadata')
+                                ->where('mime_type', 'LIKE', 'image/%')
+                                ->count();
+                            $videoCount = \Illuminate\Support\Facades\DB::table('media_metadata')
+                                ->where('mime_type', 'LIKE', 'video/%')
+                                ->count();
+                            
+                            // Generate all sitemaps
+                            Artisan::call('sitemap:generate-all');
+                            
+                            \Filament\Notifications\Notification::make()
+                                ->title('All sitemaps generated!')
+                                ->body("Generated sitemaps: {$urlCount} URLs, {$imageCount} images, {$videoCount} videos")
+                                ->success()
+                                ->duration(10000)
+                                ->send();
+                        })
+                        ->color('primary'),
+                        
+                    Action::make('generate-url-sitemap')
+                        ->label('Generate URL Sitemap')
+                        ->icon(Heroicon::OutlinedLink)
+                        ->requiresConfirmation()
+                        ->modalHeading('Generate URL Sitemap')
+                        ->modalDescription('This will regenerate the sitemap.xml file with the latest active URLs.')
+                        ->modalSubmitActionLabel('Generate')
+                        ->action(function () {
+                            // Get the count of active URLs
+                            $urlCount = \RayzenAI\UrlManager\Models\Url::active()->count();
+                            
+                            // Generate the sitemap
+                            Artisan::call('sitemap:generate');
+                            
+                            \Filament\Notifications\Notification::make()
+                                ->title('URL sitemap generated!')
+                                ->body("Generated sitemap with {$urlCount} URLs")
+                                ->success()
+                                ->send();
+                        })
+                        ->color('success'),
+                        
+                    Action::make('generate-image-sitemap')
+                        ->label('Generate Image Sitemap')
+                        ->icon(Heroicon::OutlinedPhoto)
+                        ->requiresConfirmation()
+                        ->modalHeading('Generate Image Sitemap')
+                        ->modalDescription('This will generate an image sitemap from all images in the media metadata.')
+                        ->modalSubmitActionLabel('Generate')
+                        ->action(function () {
+                            // Get the count of images
+                            $imageCount = \Illuminate\Support\Facades\DB::table('media_metadata')
+                                ->where('mime_type', 'LIKE', 'image/%')
+                                ->count();
+                            
+                            if ($imageCount === 0) {
+                                \Filament\Notifications\Notification::make()
+                                    ->title('No images found')
+                                    ->body('No images found in media metadata to generate sitemap.')
+                                    ->warning()
+                                    ->send();
+                                return;
+                            }
+                            
+                            // Generate the image sitemap
+                            Artisan::call('sitemap:generate-images');
+                            
+                            \Filament\Notifications\Notification::make()
+                                ->title('Image sitemap generated!')
+                                ->body("Generated image sitemap with {$imageCount} images")
+                                ->success()
+                                ->send();
+                        })
+                        ->color('info'),
+                        
+                    Action::make('generate-video-sitemap')
+                        ->label('Generate Video Sitemap')
+                        ->icon(Heroicon::OutlinedVideoCamera)
+                        ->requiresConfirmation()
+                        ->modalHeading('Generate Video Sitemap')
+                        ->modalDescription('This will generate a video sitemap from all videos in the media metadata.')
+                        ->modalSubmitActionLabel('Generate')
+                        ->action(function () {
+                            // Get the count of videos
+                            $videoCount = \Illuminate\Support\Facades\DB::table('media_metadata')
+                                ->where('mime_type', 'LIKE', 'video/%')
+                                ->count();
+                            
+                            if ($videoCount === 0) {
+                                \Filament\Notifications\Notification::make()
+                                    ->title('No videos found')
+                                    ->body('No videos found in media metadata to generate sitemap.')
+                                    ->warning()
+                                    ->send();
+                                return;
+                            }
+                            
+                            // Generate the video sitemap
+                            Artisan::call('sitemap:generate-videos');
+                            
+                            \Filament\Notifications\Notification::make()
+                                ->title('Video sitemap generated!')
+                                ->body("Generated video sitemap with {$videoCount} videos")
+                                ->success()
+                                ->send();
+                        })
+                        ->color('warning'),
+                ])
+                ->label('Generate Sitemaps')
                 ->icon(Heroicon::OutlinedArrowPath)
-                ->requiresConfirmation()
-                ->modalHeading('Generate New Sitemap')
-                ->modalDescription('This will regenerate the sitemap.xml file with the latest active URLs.')
-                ->modalSubmitActionLabel('Generate')
-                ->action(function () {
-                    if (class_exists(\RayzenAI\UrlManager\Commands\GenerateSitemap::class)) {
-                        // Get the count of active URLs
-                        $urlCount = \RayzenAI\UrlManager\Models\Url::active()->count();
-                        
-                        // Generate the sitemap
-                        Artisan::call('sitemap:generate');
-                        
-                        \Filament\Notifications\Notification::make()
-                            ->title('Sitemap generated successfully!')
-                            ->body("Generated sitemap with {$urlCount} URLs")
-                            ->success()
-                            ->send();
-                    } else {
-                        \Filament\Notifications\Notification::make()
-                            ->title('Sitemap generation not configured')
-                            ->warning()
-                            ->send();
-                    }
-                })
+                ->button()
                 ->color('success')
-                ->visible(fn () => config('url-manager.sitemap.enabled', true)),
-            
-            Action::make('generate-image-sitemap')
-                ->label('Generate Image Sitemap')
-                ->icon(Heroicon::OutlinedPhoto)
-                ->requiresConfirmation()
-                ->modalHeading('Generate Image Sitemap')
-                ->modalDescription('This will generate an image sitemap from all images in the media metadata.')
-                ->modalSubmitActionLabel('Generate')
-                ->action(function () {
-                    // Get the count of images
-                    $imageCount = \Illuminate\Support\Facades\DB::table('media_metadata')
-                        ->where('mime_type', 'LIKE', 'image/%')
-                        ->count();
-                    
-                    if ($imageCount === 0) {
-                        \Filament\Notifications\Notification::make()
-                            ->title('No images found')
-                            ->body('No images found in media metadata to generate sitemap.')
-                            ->warning()
-                            ->send();
-                        return;
-                    }
-                    
-                    // Generate the image sitemap
-                    Artisan::call('sitemap:generate-images');
-                    
-                    \Filament\Notifications\Notification::make()
-                        ->title('Image sitemap generated!')
-                        ->body("Generated image sitemap with {$imageCount} images")
-                        ->success()
-                        ->send();
-                })
-                ->color('info')
-                ->visible(fn () => config('url-manager.sitemap.enabled', true)),
-            
-            Action::make('generate-video-sitemap')
-                ->label('Generate Video Sitemap')
-                ->icon(Heroicon::OutlinedVideoCamera)
-                ->requiresConfirmation()
-                ->modalHeading('Generate Video Sitemap')
-                ->modalDescription('This will generate a video sitemap from all videos in the media metadata.')
-                ->modalSubmitActionLabel('Generate')
-                ->action(function () {
-                    // Get the count of videos
-                    $videoCount = \Illuminate\Support\Facades\DB::table('media_metadata')
-                        ->where('mime_type', 'LIKE', 'video/%')
-                        ->count();
-                    
-                    if ($videoCount === 0) {
-                        \Filament\Notifications\Notification::make()
-                            ->title('No videos found')
-                            ->body('No videos found in media metadata to generate sitemap.')
-                            ->warning()
-                            ->send();
-                        return;
-                    }
-                    
-                    // Generate the video sitemap
-                    Artisan::call('sitemap:generate-videos');
-                    
-                    \Filament\Notifications\Notification::make()
-                        ->title('Video sitemap generated!')
-                        ->body("Generated video sitemap with {$videoCount} videos")
-                        ->success()
-                        ->send();
-                })
-                ->color('warning')
                 ->visible(fn () => config('url-manager.sitemap.enabled', true)),
             
             Action::make('google-search-console-settings')

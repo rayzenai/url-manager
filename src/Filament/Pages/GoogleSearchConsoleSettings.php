@@ -128,31 +128,59 @@ class GoogleSearchConsoleSettings extends Page implements HasForms
                 Section::make('Actions')
                     ->schema([
                         Actions::make([
-                            Action::make('generate_sitemap')
-                                ->label('Generate Sitemap')
+                            ActionGroup::make([
+                                    Action::make('generate_all_sitemaps')
+                                        ->label('Generate All Sitemaps')
+                                        ->icon('heroicon-o-arrow-path')
+                                        ->requiresConfirmation()
+                                        ->modalHeading('Generate All Sitemaps')
+                                        ->modalDescription('This will generate URL, image, and video sitemaps.')
+                                        ->modalSubmitActionLabel('Generate All')
+                                        ->action(function () {
+                                            $this->generateAllSitemaps();
+                                        })
+                                        ->color('primary'),
+                                        
+                                    Action::make('generate_url_sitemap')
+                                        ->label('Generate URL Sitemap')
+                                        ->icon('heroicon-o-link')
+                                        ->requiresConfirmation()
+                                        ->modalHeading('Generate URL Sitemap')
+                                        ->modalDescription('This will regenerate the sitemap.xml file with the latest active URLs.')
+                                        ->modalSubmitActionLabel('Generate')
+                                        ->action(function () {
+                                            $this->generateSitemap();
+                                        })
+                                        ->color('success'),
+                                        
+                                    Action::make('generate_image_sitemap')
+                                        ->label('Generate Image Sitemap')
+                                        ->icon('heroicon-o-photo')
+                                        ->requiresConfirmation()
+                                        ->modalHeading('Generate Image Sitemap')
+                                        ->modalDescription('This will generate an image sitemap from all images.')
+                                        ->modalSubmitActionLabel('Generate')
+                                        ->action(function () {
+                                            $this->generateImageSitemap();
+                                        })
+                                        ->color('info'),
+                                        
+                                    Action::make('generate_video_sitemap')
+                                        ->label('Generate Video Sitemap')
+                                        ->icon('heroicon-o-video-camera')
+                                        ->requiresConfirmation()
+                                        ->modalHeading('Generate Video Sitemap')
+                                        ->modalDescription('This will generate a video sitemap from all videos.')
+                                        ->modalSubmitActionLabel('Generate')
+                                        ->action(function () {
+                                            $this->generateVideoSitemap();
+                                        })
+                                        ->color('warning'),
+                                ])
+                                ->label('Generate Sitemaps')
                                 ->icon('heroicon-o-arrow-path')
+                                ->button()
                                 ->color('success')
-                                ->action(function () {
-                                    $this->generateSitemap();
-                                })
-                                ->visible(fn (Get $get) => $get('enabled')),
-                                
-                            Action::make('generate_image_sitemap')
-                                ->label('Generate Image Sitemap')
-                                ->icon('heroicon-o-photo')
-                                ->color('info')
-                                ->action(function () {
-                                    $this->generateImageSitemap();
-                                })
-                                ->visible(fn (Get $get) => $get('enabled')),
-                                
-                            Action::make('generate_video_sitemap')
-                                ->label('Generate Video Sitemap')
-                                ->icon('heroicon-o-video-camera')
-                                ->color('warning')
-                                ->action(function () {
-                                    $this->generateVideoSitemap();
-                                })
                                 ->visible(fn (Get $get) => $get('enabled')),
                                 
                             ActionGroup::make($this->getViewSitemapActions())
@@ -391,6 +419,36 @@ class GoogleSearchConsoleSettings extends Page implements HasForms
         } catch (\Exception $e) {
             Notification::make()
                 ->title('Error fetching sitemaps')
+                ->body($e->getMessage())
+                ->danger()
+                ->send();
+        }
+    }
+    
+    protected function generateAllSitemaps(): void
+    {
+        try {
+            // Get counts
+            $urlCount = \RayzenAI\UrlManager\Models\Url::active()->count();
+            $imageCount = \Illuminate\Support\Facades\DB::table('media_metadata')
+                ->where('mime_type', 'LIKE', 'image/%')
+                ->count();
+            $videoCount = \Illuminate\Support\Facades\DB::table('media_metadata')
+                ->where('mime_type', 'LIKE', 'video/%')
+                ->count();
+            
+            // Generate all sitemaps using Artisan command
+            \Illuminate\Support\Facades\Artisan::call('sitemap:generate-all');
+            
+            Notification::make()
+                ->title('All sitemaps generated successfully!')
+                ->body("Generated sitemaps for: {$urlCount} URLs, {$imageCount} images, {$videoCount} videos")
+                ->success()
+                ->duration(10000)
+                ->send();
+        } catch (\Exception $e) {
+            Notification::make()
+                ->title('Error generating sitemaps')
                 ->body($e->getMessage())
                 ->danger()
                 ->send();
