@@ -20,7 +20,6 @@ class UrlManagerServiceProvider extends PackageServiceProvider
             ->hasConfigFile()
             ->hasViews()
             ->hasRoute('web')
-            ->hasRoute('api')
             ->hasMigrations([
                 '2025_01_01_000000_create_urls_table',
                 '2025_01_01_000001_create_google_search_console_settings_table',
