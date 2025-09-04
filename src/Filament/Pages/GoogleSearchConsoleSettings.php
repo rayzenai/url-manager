@@ -127,6 +127,15 @@ class GoogleSearchConsoleSettings extends Page implements HasForms
                 Section::make('Actions')
                     ->schema([
                         Actions::make([
+                            Action::make('generate_sitemap')
+                                ->label('Generate Sitemap')
+                                ->icon('heroicon-o-arrow-path')
+                                ->color('success')
+                                ->action(function () {
+                                    $this->generateSitemap();
+                                })
+                                ->visible(fn (Get $get) => $get('enabled')),
+                                
                             Action::make('test_connection')
                                 ->label('Test Connection')
                                 ->icon('heroicon-o-signal')
@@ -356,6 +365,29 @@ class GoogleSearchConsoleSettings extends Page implements HasForms
         } catch (\Exception $e) {
             Notification::make()
                 ->title('Error fetching sitemaps')
+                ->body($e->getMessage())
+                ->danger()
+                ->send();
+        }
+    }
+    
+    protected function generateSitemap(): void
+    {
+        try {
+            // Get the count of active URLs
+            $urlCount = \RayzenAI\UrlManager\Models\Url::active()->count();
+            
+            // Generate the sitemap using Artisan command
+            \Illuminate\Support\Facades\Artisan::call('sitemap:generate');
+            
+            Notification::make()
+                ->title('Sitemap generated successfully!')
+                ->body("Generated sitemap with {$urlCount} URLs")
+                ->success()
+                ->send();
+        } catch (\Exception $e) {
+            Notification::make()
+                ->title('Error generating sitemap')
                 ->body($e->getMessage())
                 ->danger()
                 ->send();

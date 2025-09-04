@@ -73,10 +73,15 @@ class ListUrls extends ListRecords
                 ->modalSubmitActionLabel('Generate')
                 ->action(function () {
                     if (class_exists(\RayzenAI\UrlManager\Commands\GenerateSitemap::class)) {
+                        // Get the count of active URLs
+                        $urlCount = \RayzenAI\UrlManager\Models\Url::active()->count();
+                        
+                        // Generate the sitemap
                         Artisan::call('sitemap:generate');
                         
                         \Filament\Notifications\Notification::make()
                             ->title('Sitemap generated successfully!')
+                            ->body("Generated sitemap with {$urlCount} URLs")
                             ->success()
                             ->send();
                     } else {
