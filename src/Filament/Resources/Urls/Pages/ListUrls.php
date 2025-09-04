@@ -3,6 +3,7 @@
 namespace RayzenAI\UrlManager\Filament\Resources\Urls\Pages;
 
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Support\Icons\Heroicon;
@@ -56,11 +57,10 @@ class ListUrls extends ListRecords
                 })
                 ->color('warning'),
             
-            Action::make('view-existing-sitemap')
-                ->label('View Sitemap')
+            ActionGroup::make($this->getViewSitemapActions())
+                ->label('View Sitemaps')
                 ->icon(Heroicon::OutlinedEye)
-                ->url(fn () => url('/sitemap.xml'))
-                ->openUrlInNewTab()
+                ->button()
                 ->color('gray')
                 ->visible(fn () => config('url-manager.sitemap.enabled', true)),
             
@@ -92,6 +92,74 @@ class ListUrls extends ListRecords
                     }
                 })
                 ->color('success')
+                ->visible(fn () => config('url-manager.sitemap.enabled', true)),
+            
+            Action::make('generate-image-sitemap')
+                ->label('Generate Image Sitemap')
+                ->icon(Heroicon::OutlinedPhoto)
+                ->requiresConfirmation()
+                ->modalHeading('Generate Image Sitemap')
+                ->modalDescription('This will generate an image sitemap from all images in the media metadata.')
+                ->modalSubmitActionLabel('Generate')
+                ->action(function () {
+                    // Get the count of images
+                    $imageCount = \Illuminate\Support\Facades\DB::table('media_metadata')
+                        ->where('mime_type', 'LIKE', 'image/%')
+                        ->count();
+                    
+                    if ($imageCount === 0) {
+                        \Filament\Notifications\Notification::make()
+                            ->title('No images found')
+                            ->body('No images found in media metadata to generate sitemap.')
+                            ->warning()
+                            ->send();
+                        return;
+                    }
+                    
+                    // Generate the image sitemap
+                    Artisan::call('sitemap:generate-images');
+                    
+                    \Filament\Notifications\Notification::make()
+                        ->title('Image sitemap generated!')
+                        ->body("Generated image sitemap with {$imageCount} images")
+                        ->success()
+                        ->send();
+                })
+                ->color('info')
+                ->visible(fn () => config('url-manager.sitemap.enabled', true)),
+            
+            Action::make('generate-video-sitemap')
+                ->label('Generate Video Sitemap')
+                ->icon(Heroicon::OutlinedVideoCamera)
+                ->requiresConfirmation()
+                ->modalHeading('Generate Video Sitemap')
+                ->modalDescription('This will generate a video sitemap from all videos in the media metadata.')
+                ->modalSubmitActionLabel('Generate')
+                ->action(function () {
+                    // Get the count of videos
+                    $videoCount = \Illuminate\Support\Facades\DB::table('media_metadata')
+                        ->where('mime_type', 'LIKE', 'video/%')
+                        ->count();
+                    
+                    if ($videoCount === 0) {
+                        \Filament\Notifications\Notification::make()
+                            ->title('No videos found')
+                            ->body('No videos found in media metadata to generate sitemap.')
+                            ->warning()
+                            ->send();
+                        return;
+                    }
+                    
+                    // Generate the video sitemap
+                    Artisan::call('sitemap:generate-videos');
+                    
+                    \Filament\Notifications\Notification::make()
+                        ->title('Video sitemap generated!')
+                        ->body("Generated video sitemap with {$videoCount} videos")
+                        ->success()
+                        ->send();
+                })
+                ->color('warning')
                 ->visible(fn () => config('url-manager.sitemap.enabled', true)),
             
             Action::make('google-search-console-settings')
@@ -180,5 +248,60 @@ class ListUrls extends ListRecords
             
             CreateAction::make(),
         ];
+    }
+    
+    protected function getViewSitemapActions(): array
+    {
+        $actions = [];
+        
+        // Master Index
+        if (file_exists(public_path('sitemap-index.xml'))) {
+            $actions[] = Action::make('view-master-index')
+                ->label('Master Sitemap Index')
+                ->icon(Heroicon::OutlinedListBullet)
+                ->url(url('/sitemap-index.xml'))
+                ->openUrlInNewTab();
+        }
+        
+        // URL Sitemap
+        if (file_exists(public_path('sitemap.xml'))) {
+            $actions[] = Action::make('view-url-sitemap')
+                ->label('URL Sitemap')
+                ->icon(Heroicon::OutlinedLink)
+                ->url(url('/sitemap.xml'))
+                ->openUrlInNewTab();
+        }
+        
+        // Image Sitemap Index
+        if (file_exists(public_path('sitemap-images.xml'))) {
+            $actions[] = Action::make('view-image-sitemap')
+                ->label('Image Sitemap Index')
+                ->icon(Heroicon::OutlinedPhoto)
+                ->url(url('/sitemap-images.xml'))
+                ->openUrlInNewTab();
+            
+            // Add individual image sitemap files
+            $i = 0;
+            while (file_exists(public_path("sitemap-images-{$i}.xml"))) {
+                $fileContent = file_get_contents(public_path("sitemap-images-{$i}.xml"));
+                $imageCount = substr_count($fileContent, '<image:image>');
+                $actions[] = Action::make("view-image-sitemap-{$i}")
+                    ->label("→ Image Sitemap Part " . ($i + 1) . " ({$imageCount} images)")
+                    ->url(url("/sitemap-images-{$i}.xml"))
+                    ->openUrlInNewTab();
+                $i++;
+            }
+        }
+        
+        // Video Sitemap
+        if (file_exists(public_path('sitemap-videos.xml'))) {
+            $actions[] = Action::make('view-video-sitemap')
+                ->label('Video Sitemap')
+                ->icon(Heroicon::OutlinedVideoCamera)
+                ->url(url('/sitemap-videos.xml'))
+                ->openUrlInNewTab();
+        }
+        
+        return $actions;
     }
 }

@@ -3,6 +3,7 @@
 namespace RayzenAI\UrlManager\Filament\Pages;
 
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Forms;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
@@ -134,6 +135,31 @@ class GoogleSearchConsoleSettings extends Page implements HasForms
                                 ->action(function () {
                                     $this->generateSitemap();
                                 })
+                                ->visible(fn (Get $get) => $get('enabled')),
+                                
+                            Action::make('generate_image_sitemap')
+                                ->label('Generate Image Sitemap')
+                                ->icon('heroicon-o-photo')
+                                ->color('info')
+                                ->action(function () {
+                                    $this->generateImageSitemap();
+                                })
+                                ->visible(fn (Get $get) => $get('enabled')),
+                                
+                            Action::make('generate_video_sitemap')
+                                ->label('Generate Video Sitemap')
+                                ->icon('heroicon-o-video-camera')
+                                ->color('warning')
+                                ->action(function () {
+                                    $this->generateVideoSitemap();
+                                })
+                                ->visible(fn (Get $get) => $get('enabled')),
+                                
+                            ActionGroup::make($this->getViewSitemapActions())
+                                ->label('View Sitemaps')
+                                ->icon('heroicon-o-eye')
+                                ->button()
+                                ->color('gray')
                                 ->visible(fn (Get $get) => $get('enabled')),
                                 
                             Action::make('test_connection')
@@ -392,5 +418,128 @@ class GoogleSearchConsoleSettings extends Page implements HasForms
                 ->danger()
                 ->send();
         }
+    }
+    
+    protected function generateImageSitemap(): void
+    {
+        try {
+            // Get the count of images
+            $imageCount = \Illuminate\Support\Facades\DB::table('media_metadata')
+                ->where('mime_type', 'LIKE', 'image/%')
+                ->count();
+            
+            if ($imageCount === 0) {
+                Notification::make()
+                    ->title('No images found')
+                    ->body('No images found in media metadata to generate sitemap.')
+                    ->warning()
+                    ->send();
+                return;
+            }
+            
+            // Generate the image sitemap using Artisan command
+            \Illuminate\Support\Facades\Artisan::call('sitemap:generate-images');
+            
+            Notification::make()
+                ->title('Image sitemap generated successfully!')
+                ->body("Generated image sitemap with {$imageCount} images")
+                ->success()
+                ->send();
+        } catch (\Exception $e) {
+            Notification::make()
+                ->title('Error generating image sitemap')
+                ->body($e->getMessage())
+                ->danger()
+                ->send();
+        }
+    }
+    
+    protected function generateVideoSitemap(): void
+    {
+        try {
+            // Get the count of videos
+            $videoCount = \Illuminate\Support\Facades\DB::table('media_metadata')
+                ->where('mime_type', 'LIKE', 'video/%')
+                ->count();
+            
+            if ($videoCount === 0) {
+                Notification::make()
+                    ->title('No videos found')
+                    ->body('No videos found in media metadata to generate sitemap.')
+                    ->warning()
+                    ->send();
+                return;
+            }
+            
+            // Generate the video sitemap using Artisan command
+            \Illuminate\Support\Facades\Artisan::call('sitemap:generate-videos');
+            
+            Notification::make()
+                ->title('Video sitemap generated successfully!')
+                ->body("Generated video sitemap with {$videoCount} videos")
+                ->success()
+                ->send();
+        } catch (\Exception $e) {
+            Notification::make()
+                ->title('Error generating video sitemap')
+                ->body($e->getMessage())
+                ->danger()
+                ->send();
+        }
+    }
+    
+    protected function getViewSitemapActions(): array
+    {
+        $actions = [];
+        
+        // Master Index
+        if (file_exists(public_path('sitemap-index.xml'))) {
+            $actions[] = Action::make('view_master_index')
+                ->label('Master Sitemap Index')
+                ->icon('heroicon-o-list-bullet')
+                ->url(url('/sitemap-index.xml'))
+                ->openUrlInNewTab();
+        }
+        
+        // URL Sitemap
+        if (file_exists(public_path('sitemap.xml'))) {
+            $actions[] = Action::make('view_url_sitemap')
+                ->label('URL Sitemap')
+                ->icon('heroicon-o-link')
+                ->url(url('/sitemap.xml'))
+                ->openUrlInNewTab();
+        }
+        
+        // Image Sitemap Index
+        if (file_exists(public_path('sitemap-images.xml'))) {
+            $actions[] = Action::make('view_image_sitemap')
+                ->label('Image Sitemap Index')
+                ->icon('heroicon-o-photo')
+                ->url(url('/sitemap-images.xml'))
+                ->openUrlInNewTab();
+            
+            // Add individual image sitemap files
+            $i = 0;
+            while (file_exists(public_path("sitemap-images-{$i}.xml"))) {
+                $fileContent = file_get_contents(public_path("sitemap-images-{$i}.xml"));
+                $imageCount = substr_count($fileContent, '<image:image>');
+                $actions[] = Action::make("view_image_sitemap_{$i}")
+                    ->label("→ Image Sitemap Part " . ($i + 1) . " ({$imageCount} images)")
+                    ->url(url("/sitemap-images-{$i}.xml"))
+                    ->openUrlInNewTab();
+                $i++;
+            }
+        }
+        
+        // Video Sitemap
+        if (file_exists(public_path('sitemap-videos.xml'))) {
+            $actions[] = Action::make('view_video_sitemap')
+                ->label('Video Sitemap')
+                ->icon('heroicon-o-video-camera')
+                ->url(url('/sitemap-videos.xml'))
+                ->openUrlInNewTab();
+        }
+        
+        return $actions;
     }
 }

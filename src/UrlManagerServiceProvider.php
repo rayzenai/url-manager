@@ -5,6 +5,9 @@ namespace RayzenAI\UrlManager;
 use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Route;
 use RayzenAI\UrlManager\Commands\GenerateSitemap;
+use RayzenAI\UrlManager\Commands\GenerateAllSitemaps;
+use RayzenAI\UrlManager\Commands\GenerateImageSitemap;
+use RayzenAI\UrlManager\Commands\GenerateVideoSitemap;
 use RayzenAI\UrlManager\Commands\GenerateUrlsForModels;
 use RayzenAI\UrlManager\Commands\SubmitSitemapToGoogle;
 use RayzenAI\UrlManager\Http\Middleware\TrackUrlVisits;
@@ -27,6 +30,9 @@ class UrlManagerServiceProvider extends PackageServiceProvider
             ])
             ->hasCommands([
                 GenerateSitemap::class,
+                GenerateAllSitemaps::class,
+                GenerateImageSitemap::class,
+                GenerateVideoSitemap::class,
                 GenerateUrlsForModels::class,
                 SubmitSitemapToGoogle::class,
             ]);
