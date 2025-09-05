@@ -27,7 +27,6 @@ return new class extends Migration
             // Indexes for performance
             $table->index('url_id');
             $table->index('user_id');
-            $table->index('ip_address');
             $table->index('country_code');
             $table->index('created_at');
             $table->index(['url_id', 'created_at']);
