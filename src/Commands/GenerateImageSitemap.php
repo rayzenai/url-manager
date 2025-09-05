@@ -185,9 +185,17 @@ class GenerateImageSitemap extends Command
     {
         // Use the FileManager facade to get the correct media URL
         if (!empty($image->file_name)) {
+            // Get configured image size for sitemap
+            $imageSize = $this->getBestImageSize();
+            
             // Use FileManager to get the full URL (handles S3, local storage, etc.)
             if (class_exists(\Kirantimsina\FileManager\Facades\FileManager::class)) {
-                return \Kirantimsina\FileManager\Facades\FileManager::getMediaPath($image->file_name);
+                // If a size is determined, use it; otherwise use original
+                if ($imageSize) {
+                    return \Kirantimsina\FileManager\Facades\FileManager::getMediaPath($image->file_name, $imageSize);
+                } else {
+                    return \Kirantimsina\FileManager\Facades\FileManager::getMediaPath($image->file_name);
+                }
             }
             
             // Fallback to manual URL construction if FileManager not available
@@ -213,6 +221,79 @@ class GenerateImageSitemap extends Command
             return $siteUrl . '/storage/' . $image->file_name;
         }
         
+        return null;
+    }
+    
+    /**
+     * Intelligently determine the best image size for sitemaps
+     * Prefers sizes between 600-1000px, falling back to the closest available
+     */
+    protected function getBestImageSize(): ?string
+    {
+        // First check if there's a manually configured size
+        $configuredSize = config('url-manager.sitemap.images.image_size');
+        
+        // If explicitly set to null or false, use original
+        if ($configuredSize === null || $configuredSize === false) {
+            return null;
+        }
+        
+        // If a specific size is configured and not 'auto', use it
+        if ($configuredSize && $configuredSize !== 'auto') {
+            return $configuredSize;
+        }
+        
+        // Auto-detect best size from file-manager config
+        $availableSizes = config('file-manager.image_sizes', []);
+        
+        if (empty($availableSizes)) {
+            // No sizes configured, use original
+            return null;
+        }
+        
+        // Find sizes within our preferred range (600-1000px)
+        $preferredMin = 600;
+        $preferredMax = 1000;
+        $candidateSizes = [];
+        
+        foreach ($availableSizes as $name => $height) {
+            $heightInt = intval($height);
+            if ($heightInt >= $preferredMin && $heightInt <= $preferredMax) {
+                $candidateSizes[$name] = $heightInt;
+            }
+        }
+        
+        // If we found sizes in the preferred range, use the largest one
+        if (!empty($candidateSizes)) {
+            // Sort by height (ascending) and get the largest
+            asort($candidateSizes);
+            $bestSize = array_key_last($candidateSizes);
+            
+            $this->info("Auto-selected image size '{$bestSize}' ({$candidateSizes[$bestSize]}px) for sitemaps");
+            return $bestSize;
+        }
+        
+        // No sizes in preferred range, find the closest one
+        $closestSize = null;
+        $closestDistance = PHP_INT_MAX;
+        $targetHeight = 800; // Middle of our preferred range
+        
+        foreach ($availableSizes as $name => $height) {
+            $heightInt = intval($height);
+            $distance = abs($heightInt - $targetHeight);
+            if ($distance < $closestDistance) {
+                $closestDistance = $distance;
+                $closestSize = $name;
+            }
+        }
+        
+        if ($closestSize) {
+            $heightInt = intval($availableSizes[$closestSize]);
+            $this->info("Auto-selected closest image size '{$closestSize}' ({$heightInt}px) for sitemaps");
+            return $closestSize;
+        }
+        
+        // Fallback to original if no suitable size found
         return null;
     }
     

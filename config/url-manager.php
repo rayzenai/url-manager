@@ -104,6 +104,15 @@ return [
         'images' => [
             'enabled' => true,
             'max_images_per_file' => 5000,
+            
+            /*
+            | Image size to use in sitemap URLs
+            | Options:
+            | - 'auto': Automatically select best size (600-1000px range)
+            | - 'thumb', 'medium', 'large', etc.: Use specific size from file-manager config
+            | - null: Use original image (not recommended for performance)
+            */
+            'image_size' => 'auto',
         ],
         
         /*

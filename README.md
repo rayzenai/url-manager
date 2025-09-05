@@ -518,6 +518,13 @@ return [
             'category' => 0.9,
             'page' => 0.6,
         ],
+        
+        // Image sitemap configuration
+        'images' => [
+            'enabled' => true,
+            'max_images_per_file' => 5000,
+            'image_size' => 'large', // Use optimized size: 'thumb', 'medium', 'large', 'full', or null for original
+        ],
     ],
     
     // Filament admin panel
@@ -623,13 +630,44 @@ php artisan sitemap:generate-images --max-urls=5000
 - Automatically creates index files for large image collections
 - Generates Google Image sitemap format with proper XML namespace
 - Includes image location, title, and caption metadata
+- Uses optimized image sizes instead of originals for better performance
 
 **Performance Optimization:**
 - Direct database queries avoid expensive polymorphic lookups
 - Chunked processing for handling millions of images
 - Only processes images from SEO-enabled models (configured in file-manager)
 
-#### Configuration
+#### Image Size Configuration
+
+Configure the image size used in sitemaps in `config/url-manager.php`:
+
+```php
+'sitemap' => [
+    'images' => [
+        'enabled' => true,
+        'max_images_per_file' => 5000,
+        
+        // Configure which size to use for sitemap images
+        // Options: 'icon', 'thumb', 'medium', 'large', 'full', etc.
+        // Set to null to use original images
+        'image_size' => 'large', // Default: 720px height
+    ],
+],
+```
+
+The available sizes are defined in your `config/file-manager.php`:
+
+```php
+'image_sizes' => [
+    'icon' => 64,       // 64px height
+    'thumb' => 240,     // 240px height  
+    'medium' => 480,    // 480px height
+    'large' => 720,     // 720px height (recommended for sitemaps)
+    'full' => 1080,     // 1080px height
+],
+```
+
+#### SEO Title Configuration
 
 Control which models receive SEO titles in `config/file-manager.php`:
 
