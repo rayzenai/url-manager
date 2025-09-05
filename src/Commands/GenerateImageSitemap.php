@@ -11,6 +11,9 @@ class GenerateImageSitemap extends Command
     protected $signature = 'sitemap:generate-images {--limit=50000 : Maximum images per sitemap}';
 
     protected $description = 'Generate XML image sitemap from media metadata';
+    
+    protected ?string $cachedImageSize = null;
+    protected bool $imageSizeComputed = false;
 
     public function handle()
     {
@@ -185,8 +188,8 @@ class GenerateImageSitemap extends Command
     {
         // Use the FileManager facade to get the correct media URL
         if (!empty($image->file_name)) {
-            // Get configured image size for sitemap
-            $imageSize = $this->getBestImageSize();
+            // Get configured image size for sitemap (cached after first call)
+            $imageSize = $this->getCachedImageSize();
             
             // Use FileManager to get the full URL (handles S3, local storage, etc.)
             if (class_exists(\Kirantimsina\FileManager\Facades\FileManager::class)) {
@@ -222,6 +225,19 @@ class GenerateImageSitemap extends Command
         }
         
         return null;
+    }
+    
+    /**
+     * Get the cached image size, computing it only once per command execution
+     */
+    protected function getCachedImageSize(): ?string
+    {
+        if (!$this->imageSizeComputed) {
+            $this->cachedImageSize = $this->getBestImageSize();
+            $this->imageSizeComputed = true;
+        }
+        
+        return $this->cachedImageSize;
     }
     
     /**
