@@ -76,34 +76,5 @@ class RecordUrlVisit implements ShouldQueue
                 $model->increment($viewCountColumn);
             }
         }
-        
-        // Track user-specific views if configured
-        if ($this->userId && config('url-manager.track_user_views', false)) {
-            $this->trackUserView($model);
-        }
-    }
-    
-    /**
-     * Track user-specific view
-     */
-    protected function trackUserView($model): void
-    {
-        // Check if ViewCount model exists in the app
-        $viewCountClass = 'App\\Models\\ViewCount';
-        
-        if (class_exists($viewCountClass)) {
-            $viewCountClass::create([
-                'entity_id' => $model->id,
-                'user_id' => $this->userId,
-                'created_at' => now(),
-            ]);
-        } else {
-            // Fire event for custom handling
-            event('url-manager.user.viewed', [
-                'model' => $model,
-                'user_id' => $this->userId,
-                'timestamp' => now(),
-            ]);
-        }
     }
 }
