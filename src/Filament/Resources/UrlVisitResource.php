@@ -50,6 +50,16 @@ class UrlVisitResource extends Resource
                     ->sortable()
                     ->toggleable(),
                     
+                TextColumn::make('country_code')
+                    ->label('Country')
+                    ->sortable()
+                    ->searchable()
+                    ->formatStateUsing(fn ($state, $record) => 
+                        $record->country_flag ? $record->country_flag . ' ' . $record->country_name : '-'
+                    )
+                    ->tooltip(fn ($record) => $record->country_name)
+                    ->toggleable(),
+                    
                 TextColumn::make('user.name')
                     ->label('User')
                     ->searchable()
@@ -61,7 +71,17 @@ class UrlVisitResource extends Resource
                     ->sortable()
                     ->formatStateUsing(fn ($state, $record) => 
                         $state . ($record->browser_version ? ' ' . $record->browser_version : '')
-                    ),
+                    )
+                    ->icon(fn ($state) => match (true) {
+                        str_contains(strtolower($state), 'android') => 'heroicon-o-device-phone-mobile',
+                        str_contains(strtolower($state), 'ios') => 'heroicon-o-device-phone-mobile',
+                        str_contains(strtolower($state), 'app') => 'heroicon-o-device-phone-mobile',
+                        str_contains(strtolower($state), 'chrome') => 'heroicon-o-globe-alt',
+                        str_contains(strtolower($state), 'safari') => 'heroicon-o-globe-alt',
+                        str_contains(strtolower($state), 'firefox') => 'heroicon-o-globe-alt',
+                        str_contains(strtolower($state), 'edge') => 'heroicon-o-globe-alt',
+                        default => 'heroicon-o-computer-desktop',
+                    }),
                     
                 TextColumn::make('platform')
                     ->label('OS')
@@ -75,6 +95,12 @@ class UrlVisitResource extends Resource
                         'mobile' => 'warning',
                         'tablet' => 'info',
                         default => 'gray',
+                    })
+                    ->icon(fn (string $state): string => match ($state) {
+                        'desktop' => 'heroicon-o-computer-desktop',
+                        'mobile' => 'heroicon-o-device-phone-mobile',
+                        'tablet' => 'heroicon-o-device-tablet',
+                        default => 'heroicon-o-question-mark-circle',
                     }),
                     
                 TextColumn::make('referer')
@@ -90,6 +116,19 @@ class UrlVisitResource extends Resource
                     ->since(),
             ])
             ->filters([
+                SelectFilter::make('country_code')
+                    ->label('Country')
+                    ->options(fn () => 
+                        UrlVisit::whereNotNull('country_code')
+                            ->distinct()
+                            ->pluck('country_code')
+                            ->mapWithKeys(fn ($code) => [
+                                $code => (new UrlVisit(['country_code' => $code]))->country_flag . ' ' . (new UrlVisit(['country_code' => $code]))->country_name
+                            ])
+                            ->toArray()
+                    )
+                    ->searchable(),
+                    
                 SelectFilter::make('device')
                     ->options([
                         'desktop' => 'Desktop',

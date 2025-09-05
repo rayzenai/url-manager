@@ -18,7 +18,8 @@
         "spatie/laravel-sitemap": "^7.0",
         "google/apiclient": "^2.0",
         "jenssegers/agent": "^2.6",
-        "laravel/sanctum": "^4.0"
+        "laravel/sanctum": "^4.0",
+        "stevebauman/location": "^7.0"
     },
     "require-dev": {},
     "autoload": {

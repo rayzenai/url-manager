@@ -5,6 +5,7 @@ namespace RayzenAI\UrlManager\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Jenssegers\Agent\Agent;
+use Stevebauman\Location\Facades\Location;
 
 class UrlVisit extends Model
 {
@@ -16,6 +17,7 @@ class UrlVisit extends Model
     protected $fillable = [
         'url_id',
         'ip_address',
+        'country_code',
         'browser',
         'browser_version',
         'platform',
@@ -73,22 +75,152 @@ class UrlVisit extends Model
             'meta' => $metadata,
         ];
 
-        // Parse user agent for browser/device info
-        if ($agent->isDesktop()) {
-            $data['device'] = 'desktop';
-        } elseif ($agent->isTablet()) {
-            $data['device'] = 'tablet';
-        } elseif ($agent->isMobile()) {
-            $data['device'] = 'mobile';
-        } else {
-            $data['device'] = 'unknown';
+        // Resolve country code from IP address
+        try {
+            if ($ipAddress && $ipAddress !== 'UNKNOWN' && filter_var($ipAddress, FILTER_VALIDATE_IP)) {
+                $location = Location::get($ipAddress);
+                if ($location && $location->countryCode) {
+                    $data['country_code'] = $location->countryCode;
+                }
+            }
+        } catch (\Exception $e) {
+            // Silently fail if location resolution fails
         }
 
-        $data['browser'] = substr($agent->browser() ?: 'Unknown', 0, 50);
-        $data['browser_version'] = substr($agent->version($agent->browser()) ?: '', 0, 20);
-        $data['platform'] = substr($agent->platform() ?: 'Unknown', 0, 50);
+        // Check for mobile app source parameter first (for API calls)
+        $source = request()->input('source');
+        $isMobileApp = in_array($source, ['android', 'ios']);
+        
+        // Parse user agent for browser/device info
+        if ($isMobileApp) {
+            // API call from mobile app
+            $data['device'] = 'mobile';
+            $data['browser'] = ucfirst($source) . ' App';
+            $data['platform'] = ucfirst($source);
+            $data['browser_version'] = '';
+            
+            // Store source in metadata
+            $data['meta'] = array_merge($data['meta'] ?? [], ['source' => $source]);
+        } else {
+            // Regular web/browser detection
+            if ($agent->isDesktop()) {
+                $data['device'] = 'desktop';
+            } elseif ($agent->isTablet()) {
+                $data['device'] = 'tablet';
+            } elseif ($agent->isMobile()) {
+                $data['device'] = 'mobile';
+            } else {
+                // Check User-Agent for Flutter/Dart or other mobile app frameworks
+                if ($userAgent && (
+                    stripos($userAgent, 'flutter') !== false ||
+                    stripos($userAgent, 'dart') !== false ||
+                    stripos($userAgent, 'okhttp') !== false || // Common Android HTTP client
+                    stripos($userAgent, 'alamofire') !== false || // Common iOS HTTP client
+                    stripos($userAgent, 'react-native') !== false ||
+                    stripos($userAgent, 'php-native') !== false ||
+                    stripos($userAgent, 'expo') !== false
+                )) {
+                    $data['device'] = 'mobile';
+                    $data['browser'] = 'Mobile App';
+                } else {
+                    $data['device'] = 'unknown';
+                }
+            }
+            
+            // Only set browser info if not already set
+            if (!isset($data['browser'])) {
+                $data['browser'] = substr($agent->browser() ?: 'Unknown', 0, 50);
+                $data['browser_version'] = substr($agent->version($agent->browser()) ?: '', 0, 20);
+            }
+            
+            $data['platform'] = substr($agent->platform() ?: 'Unknown', 0, 50);
+        }
 
         return self::create($data);
+    }
+
+    /**
+     * Get country flag emoji from country code
+     */
+    public function getCountryFlagAttribute(): ?string
+    {
+        if (!$this->country_code) {
+            return null;
+        }
+        
+        // Convert country code to flag emoji using regional indicator symbols
+        $flag = '';
+        $code = strtoupper($this->country_code);
+        for ($i = 0; $i < strlen($code); $i++) {
+            $flag .= mb_chr(ord($code[$i]) + 127397, 'UTF-8');
+        }
+        
+        return $flag;
+    }
+
+    /**
+     * Get country name from country code
+     */
+    public function getCountryNameAttribute(): ?string
+    {
+        if (!$this->country_code) {
+            return null;
+        }
+        
+        // Common country codes - expand as needed
+        $countries = [
+            'US' => 'United States',
+            'GB' => 'United Kingdom',
+            'NP' => 'Nepal',
+            'IN' => 'India',
+            'CN' => 'China',
+            'JP' => 'Japan',
+            'DE' => 'Germany',
+            'FR' => 'France',
+            'IT' => 'Italy',
+            'ES' => 'Spain',
+            'CA' => 'Canada',
+            'AU' => 'Australia',
+            'BR' => 'Brazil',
+            'RU' => 'Russia',
+            'KR' => 'South Korea',
+            'MX' => 'Mexico',
+            'ID' => 'Indonesia',
+            'NL' => 'Netherlands',
+            'SA' => 'Saudi Arabia',
+            'TR' => 'Turkey',
+            'CH' => 'Switzerland',
+            'SE' => 'Sweden',
+            'PL' => 'Poland',
+            'BE' => 'Belgium',
+            'AR' => 'Argentina',
+            'NO' => 'Norway',
+            'AT' => 'Austria',
+            'AE' => 'United Arab Emirates',
+            'DK' => 'Denmark',
+            'SG' => 'Singapore',
+            'MY' => 'Malaysia',
+            'IE' => 'Ireland',
+            'IL' => 'Israel',
+            'TH' => 'Thailand',
+            'EG' => 'Egypt',
+            'PH' => 'Philippines',
+            'FI' => 'Finland',
+            'PK' => 'Pakistan',
+            'BD' => 'Bangladesh',
+            'VN' => 'Vietnam',
+            'CZ' => 'Czech Republic',
+            'RO' => 'Romania',
+            'PT' => 'Portugal',
+            'NZ' => 'New Zealand',
+            'GR' => 'Greece',
+            'UA' => 'Ukraine',
+            'HU' => 'Hungary',
+            'ZA' => 'South Africa',
+            'LK' => 'Sri Lanka',
+        ];
+        
+        return $countries[strtoupper($this->country_code)] ?? strtoupper($this->country_code);
     }
 
     /**
