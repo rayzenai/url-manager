@@ -7,7 +7,7 @@ A comprehensive Laravel package for managing URLs, redirects, and sitemaps with 
 - 🔗 **Dynamic URL Management** - Manage all your application URLs from a central location
 - 🔄 **301/302 Redirects** - Create and manage URL redirects with configurable status codes
 - 🗺️ **Automatic Sitemap Generation** - Generate XML sitemaps with support for large sites
-- 📊 **Visit Tracking** - Track URL visits and analytics
+- 📊 **Visit Tracking** - Track URL visits with country detection, device info, and mobile app support
 - 🎨 **Filament Integration** - Full-featured admin panel for URL management
 - 🏷️ **SEO Metadata** - Manage meta tags and Open Graph data
 - 🚀 **Performance Optimized** - Efficient database queries with proper indexing
@@ -18,7 +18,8 @@ A comprehensive Laravel package for managing URLs, redirects, and sitemaps with 
 - PHP 8.2+
 - Laravel 11.0+ or 12.0+
 - Filament 4.0+
-- kirantimsina/file-manager (for media SEO functionality)
+- Stevebauman/Location 7.0+ with MaxMind database (for visitor country detection)
+- kirantimsina/file-manager (optional, for media SEO functionality)
 
 ## Installation
 
@@ -47,18 +48,56 @@ This package provides:
 php artisan vendor:publish --tag=url-manager-config
 ```
 
-### Step 3: Run Migrations
+### Step 3: Configure Location Service (Required for visitor tracking)
+
+The URL Manager uses the Stevebauman/Location package to detect visitor countries from IP addresses. You need to set up MaxMind's GeoIP database:
+
+#### Option A: Use Local Database (Recommended)
+
+1. Download the free GeoLite2 City database from [MaxMind](https://dev.maxmind.com/geoip/geoip2/geolite2/)
+2. Create a free account and download `GeoLite2-City.mmdb`
+3. Place the file in your Laravel project: `database/maxmind/GeoLite2-City.mmdb`
+4. Publish and configure the Location package:
+
+```bash
+php artisan vendor:publish --provider="Stevebauman\Location\LocationServiceProvider"
+```
+
+5. Update `config/location.php`:
+
+```php
+'driver' => Stevebauman\Location\Drivers\MaxMind::class,
+
+'maxmind' => [
+    'local' => [
+        'type' => 'city', // or 'country' for smaller file
+        'path' => database_path('maxmind/GeoLite2-City.mmdb'),
+    ],
+],
+```
+
+#### Option B: Use Web Service
+
+Configure MaxMind web service in your `.env`:
+
+```env
+MAXMIND_USER_ID=your_user_id
+MAXMIND_LICENSE_KEY=your_license_key
+```
+
+### Step 4: Run Migrations
 
 ```bash
 php artisan vendor:publish --tag=url-manager-migrations
 php artisan migrate
 ```
 
-This will create two tables:
+This will create the following tables:
 - `urls` - For managing URLs and redirects
+- `url_visits` - For tracking visitor analytics
 - `google_search_console_settings` - For storing Google Search Console credentials securely
 
-### Step 4: Register with Filament
+### Step 5: Register with Filament
 
 Add the plugin to your Filament panel configuration (typically in `app/Providers/Filament/AdminPanelProvider.php`):
 
@@ -405,6 +444,42 @@ $url = $product->url;
 echo $url->visits; // Total visits
 echo $url->last_visited_at; // Last visit timestamp
 ```
+
+### Visitor Analytics Features
+
+The URL Manager provides comprehensive visitor tracking with the following features:
+
+#### Country Detection
+- Automatically detects visitor's country from IP address using MaxMind GeoIP database
+- Displays country flags (🇺🇸 🇬🇧 🇳🇵 🇮🇳) in the admin panel
+- Filter visits by country in Filament resource
+
+#### Mobile App Detection
+The package intelligently detects mobile app traffic through:
+- **API Source Parameters**: Recognizes `source=android` or `source=ios` parameters
+- **User-Agent Analysis**: Detects Flutter, React Native, Expo, and other mobile frameworks
+- **HTTP Client Detection**: Identifies OkHttp (Android) and Alamofire (iOS) clients
+
+#### Populate Existing Data
+If you have existing visitor data without country codes, run:
+
+```bash
+php artisan url-manager:populate-country-codes
+```
+
+This command will:
+- Process all URL visits without country codes
+- Resolve countries from IP addresses
+- Update records with detected country codes
+
+#### Visitor Information Tracked
+- **IP Address** with country flag
+- **Browser/App** type and version
+- **Platform/OS** (Windows, MacOS, iOS, Android, etc.)
+- **Device Type** (Desktop, Mobile, Tablet)
+- **Referrer URL**
+- **User** (if authenticated)
+- **Visit Timestamp**
 
 ## Configuration
 
