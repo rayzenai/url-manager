@@ -68,7 +68,7 @@ class UrlInput extends TextInput
                         }
 
                         if ($query->exists()) {
-                            $fail('This slug is already in use.');
+                            $fail('This URL slug is already in use.');
                         }
                     };
                 },
