@@ -302,7 +302,8 @@ class UrlVisit extends Model
                 })
                 ->sortDesc()
                 ->take(5),
-            'top_platforms' => $visits->groupBy('platform')
+            'top_countries' => $visits->whereNotNull('country_code')
+                ->groupBy('country_code')
                 ->map(function ($group) {
                     return $group->count();
                 })
