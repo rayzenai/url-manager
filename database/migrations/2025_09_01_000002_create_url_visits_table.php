@@ -15,9 +15,9 @@ return new class extends Migration
             $table->id();
             $table->foreignId('url_id')->constrained('urls')->onDelete('cascade');
             $table->string('ip_address', 45)->nullable(); // Support IPv4 and IPv6
+            $table->string('country_code', 2)->nullable(); // ISO 3166-1 alpha-2 country code
             $table->string('browser', 50)->nullable(); // Parsed browser name
             $table->string('browser_version', 20)->nullable();
-            $table->string('platform', 50)->nullable(); // OS/Platform
             $table->string('device', 20)->nullable(); // Mobile, Desktop, Tablet
             $table->foreignId('user_id')->nullable()->constrained('users')->onDelete('set null');
             $table->string('referer')->nullable();
@@ -28,6 +28,7 @@ return new class extends Migration
             $table->index('url_id');
             $table->index('user_id');
             $table->index('ip_address');
+            $table->index('country_code');
             $table->index('created_at');
             $table->index(['url_id', 'created_at']);
             $table->index(['user_id', 'created_at']);

@@ -474,12 +474,13 @@ This command will:
 
 #### Visitor Information Tracked
 - **IP Address** with country flag
+- **Country Code** with flag emoji display
 - **Browser/App** type and version
-- **Platform/OS** (Windows, MacOS, iOS, Android, etc.)
 - **Device Type** (Desktop, Mobile, Tablet)
 - **Referrer URL**
 - **User** (if authenticated)
 - **Visit Timestamp**
+- **Metadata** (additional custom data)
 
 ## Configuration
 

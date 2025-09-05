@@ -48,7 +48,7 @@ class UrlVisitResource extends Resource
                     ->label('IP Address')
                     ->searchable()
                     ->sortable()
-                    ->toggleable(),
+                     ->toggleable(isToggledHiddenByDefault: true),
                     
                 TextColumn::make('country_code')
                     ->label('Country')
@@ -69,6 +69,7 @@ class UrlVisitResource extends Resource
                 TextColumn::make('browser')
                     ->label('Browser')
                     ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true)
                     ->formatStateUsing(fn ($state, $record) => 
                         $state . ($record->browser_version ? ' ' . $record->browser_version : '')
                     )
@@ -82,10 +83,6 @@ class UrlVisitResource extends Resource
                         str_contains(strtolower($state), 'edge') => 'heroicon-o-globe-alt',
                         default => 'heroicon-o-computer-desktop',
                     }),
-                    
-                TextColumn::make('platform')
-                    ->label('OS')
-                    ->sortable(),
                     
                 TextColumn::make('device')
                     ->label('Device')

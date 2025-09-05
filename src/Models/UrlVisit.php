@@ -20,7 +20,6 @@ class UrlVisit extends Model
         'country_code',
         'browser',
         'browser_version',
-        'platform',
         'device',
         'user_id',
         'referer',
@@ -96,7 +95,6 @@ class UrlVisit extends Model
             // API call from mobile app
             $data['device'] = 'mobile';
             $data['browser'] = ucfirst($source) . ' App';
-            $data['platform'] = ucfirst($source);
             $data['browser_version'] = '';
             
             // Store source in metadata
@@ -132,8 +130,6 @@ class UrlVisit extends Model
                 $data['browser'] = substr($agent->browser() ?: 'Unknown', 0, 50);
                 $data['browser_version'] = substr($agent->version($agent->browser()) ?: '', 0, 20);
             }
-            
-            $data['platform'] = substr($agent->platform() ?: 'Unknown', 0, 50);
         }
 
         return self::create($data);
