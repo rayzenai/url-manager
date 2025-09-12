@@ -57,6 +57,23 @@ trait HasUrl
     }
 
     /**
+     * Get the web URL path for this model
+     * Override this in your model to customize the URL path
+     * Defaults to the model's slug if not overridden
+     */
+    public function webUrlPath(): string
+    {
+        // Default to slug if it exists, otherwise use the ID
+        if (property_exists($this, 'slug') || isset($this->slug)) {
+            return $this->slug;
+        }
+        
+        // Fallback to a generic path using the model name and ID
+        $modelName = str(class_basename($this))->plural()->kebab()->toString();
+        return "{$modelName}/{$this->id}";
+    }
+
+    /**
      * Boot the HasUrl trait
      */
     protected static function bootHasUrl(): void
@@ -178,10 +195,6 @@ trait HasUrl
      */
     protected function createUrl(): void
     {
-        if (!method_exists($this, 'webUrlPath')) {
-            return;
-        }
-
         $path = $this->webUrlPath();
         $type = $this->getUrlType();
 
