@@ -63,14 +63,16 @@ trait HasUrl
      */
     public function webUrlPath(): string
     {
-        // Default to slug if it exists, otherwise use the ID
+        $modelName = str(class_basename($this))->plural()->kebab()->toString();
+        $slug = (string) $this->id;
+
+        // Use slug if it exists
         if (property_exists($this, 'slug') || isset($this->slug)) {
-            return $this->slug;
+            $slug =  $this->slug;
         }
         
-        // Fallback to a generic path using the model name and ID
-        $modelName = str(class_basename($this))->plural()->kebab()->toString();
-        return "{$modelName}/{$this->id}";
+        // Fallback to a generic path using the model name and ID/slug
+        return "{$modelName}/{$slug}";
     }
 
     /**
