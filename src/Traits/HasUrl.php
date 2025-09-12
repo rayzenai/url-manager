@@ -185,14 +185,19 @@ trait HasUrl
         $path = $this->webUrlPath();
         $type = $this->getUrlType();
 
-        Url::create([
-            'slug' => $path,
-            'urable_type' => get_class($this),
-            'urable_id' => $this->id,
-            'type' => $type,
-            'status' => $this->isActiveForUrl() ? Url::STATUS_ACTIVE : Url::STATUS_INACTIVE,
-            'last_modified_at' => now(),
-        ]);
+        // Use updateOrCreate to handle race conditions and duplicates
+        Url::updateOrCreate(
+            [
+                'urable_type' => get_class($this),
+                'urable_id' => $this->id,
+            ],
+            [
+                'slug' => $path,
+                'type' => $type,
+                'status' => $this->isActiveForUrl() ? Url::STATUS_ACTIVE : Url::STATUS_INACTIVE,
+                'last_modified_at' => now(),
+            ]
+        );
     }
 
     /**
