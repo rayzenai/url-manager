@@ -155,6 +155,15 @@ class Product extends Model
     }
 
     /**
+     * Enable automatic view count tracking
+     * Optional - implement this to track views on your model
+     */
+    public function getViewCountColumn(): ?string
+    {
+        return 'view_count'; // Return null if no view counting needed
+    }
+
+    /**
      * Define Open Graph tags for SEO
      * Optional but recommended
      */
@@ -376,6 +385,44 @@ if ($product->url && $product->url->status === 'active') {
 
 ### Visit Tracking
 
+The package automatically tracks URL visits, but to track view counts on your models, you need to implement the `getViewCountColumn()` method:
+
+```php
+class Product extends Model
+{
+    use HasUrl;
+
+    protected $fillable = [
+        'name',
+        'slug',
+        'view_count', // Add your view count column
+        // ...
+    ];
+
+    /**
+     * Enable automatic view count tracking
+     * When visitors access this model's URL, the view_count column will be incremented
+     */
+    public function getViewCountColumn(): ?string
+    {
+        return 'view_count'; // Return null if you don't want view counting
+    }
+}
+```
+
+**Important**: Make sure your database migration includes the view count column:
+
+```php
+Schema::create('products', function (Blueprint $table) {
+    $table->id();
+    $table->string('name');
+    $table->string('slug')->unique();
+    $table->unsignedBigInteger('view_count')->default(0); // Add this
+    $table->boolean('is_active')->default(true);
+    $table->timestamps();
+});
+```
+
 The package provides two ways to track visits:
 
 #### Method 1: Using Middleware (Recommended for Livewire & API Routes)
@@ -424,6 +471,7 @@ The middleware automatically:
 - Matches the request path against URLs in the database
 - Records visits asynchronously via queued jobs
 - Captures IP address, user agent, referrer, and authenticated user ID
+- **Increments the model's view_count** if `getViewCountColumn()` is implemented
 - Works transparently without modifying your controllers or components
 
 #### Method 2: Using Fallback Route
@@ -440,10 +488,18 @@ Visits are automatically tracked for any URL managed by the package.
 #### Accessing Visit Data
 
 ```php
+// URL-level visit tracking (always available)
 $url = $product->url;
-echo $url->visits; // Total visits
+echo $url->visits; // Total visits on the URL record
 echo $url->last_visited_at; // Last visit timestamp
+
+// Model-level view tracking (if getViewCountColumn() is implemented)
+echo $product->view_count; // Total views on the model itself
 ```
+
+**Note**: The difference between URL visits and model view counts:
+- **URL visits**: Tracked in the `urls` table and `url_visits` table (always enabled)
+- **Model view counts**: Tracked on your model's `view_count` column (requires `getViewCountColumn()` implementation)
 
 ### Visitor Analytics Features
 
