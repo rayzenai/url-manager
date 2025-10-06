@@ -4,14 +4,17 @@ namespace RayzenAI\UrlManager;
 
 use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Route;
+use RayzenAI\UrlManager\Commands\CheckUrlManagerCommand;
 use RayzenAI\UrlManager\Commands\GenerateSitemap;
 use RayzenAI\UrlManager\Commands\GenerateAllSitemaps;
 use RayzenAI\UrlManager\Commands\GenerateImageSitemap;
 use RayzenAI\UrlManager\Commands\GenerateVideoSitemap;
 use RayzenAI\UrlManager\Commands\GenerateUrlsForModels;
+use RayzenAI\UrlManager\Commands\MakeModelCommand;
 use RayzenAI\UrlManager\Commands\PopulateUrlVisitCountryCodes;
 use RayzenAI\UrlManager\Commands\SubmitSitemapToGoogle;
 use RayzenAI\UrlManager\Http\Middleware\TrackUrlVisits;
+use RayzenAI\UrlManager\Services\UrlManagerService;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
 
@@ -30,14 +33,23 @@ class UrlManagerServiceProvider extends PackageServiceProvider
                 '2025_09_01_000002_create_url_visits_table',
             ])
             ->hasCommands([
+                CheckUrlManagerCommand::class,
                 GenerateSitemap::class,
                 GenerateAllSitemaps::class,
                 GenerateImageSitemap::class,
                 GenerateVideoSitemap::class,
                 GenerateUrlsForModels::class,
+                MakeModelCommand::class,
                 PopulateUrlVisitCountryCodes::class,
                 SubmitSitemapToGoogle::class,
             ]);
+    }
+
+    public function packageRegistered()
+    {
+        $this->app->singleton('url-manager', function ($app) {
+            return new UrlManagerService();
+        });
     }
     
     public function packageBooted()

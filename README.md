@@ -199,6 +199,75 @@ Route::fallback([\RayzenAI\UrlManager\Http\Controllers\UrlController::class, 'ha
 
 ## Usage
 
+### Checking Your Configuration
+
+Before you start using URL Manager, check that all your models are properly configured:
+
+```bash
+# Check all models using HasUrl trait
+php artisan url-manager:check
+
+# Check a specific model
+php artisan url-manager:check "App\Models\Product"
+```
+
+This command will verify:
+- ✅ `webUrlPath()` method is implemented
+- ✅ `is_active` (or custom active field) exists in database
+- ✅ `getViewCountColumn()` is configured correctly
+- ✅ SEO methods (`ogTags()`, `getSeoMetadata()`) are present
+- ✅ URL records have been generated
+- ⚠️  Warnings for optional but recommended features
+
+### Creating New Models with HasUrl
+
+Generate a new model with HasUrl trait and all required methods pre-configured:
+
+```bash
+# Create a basic model
+php artisan url-manager:make-model Product
+
+# Create model with migration
+php artisan url-manager:make-model Product --migration
+
+# Create model with migration, factory, and seeder
+php artisan url-manager:make-model Product --all
+```
+
+The generated model includes:
+- HasUrl trait already configured
+- `webUrlPath()` method with sensible defaults
+- `getViewCountColumn()` for automatic view tracking
+- `ogTags()` and `getSeoMetadata()` for SEO
+- Proper fillable fields and casts
+
+### Using the UrlManager Facade
+
+For common URL operations, use the `UrlManager` facade:
+
+```php
+use RayzenAI\UrlManager\Facades\UrlManager;
+
+// Generate URL for a model
+$product = Product::find(1);
+UrlManager::generateUrl($product);
+
+// Track a visit manually
+UrlManager::trackVisit($product, auth()->id());
+
+// Create a redirect
+UrlManager::createRedirect('old-url', 'new-url', 301);
+
+// Find URL by slug
+$url = UrlManager::findBySlug('products/my-product');
+
+// Get visit count
+$visits = UrlManager::getVisitCount($product);
+
+// Delete URL
+UrlManager::deleteUrl($product);
+```
+
 ### Creating URLs for Existing Models
 
 Generate URLs for all models that use the HasUrl trait:
@@ -594,6 +663,46 @@ return [
 ```
 
 ## Advanced Features
+
+### UrlManager Facade
+
+The `UrlManager` facade provides a convenient API for common URL operations:
+
+```php
+use RayzenAI\UrlManager\Facades\UrlManager;
+
+// Generate or update URL for a model
+$url = UrlManager::generateUrl($product);
+
+// Manually track a visit (normally handled automatically)
+UrlManager::trackVisit($product, auth()->id(), ['source' => 'mobile']);
+
+// Create redirects programmatically
+UrlManager::createRedirect('/old-path', '/new-path', 301);
+
+// Find URLs by slug
+$url = UrlManager::findBySlug('products/my-product');
+
+// Get all redirects
+$redirects = UrlManager::getRedirects();
+
+// Get visit count for a model
+$totalVisits = UrlManager::getVisitCount($product);
+
+// Delete URL for a model
+UrlManager::deleteUrl($product);
+```
+
+**When to use the facade:**
+- Creating redirects programmatically
+- Manual visit tracking (in addition to automatic tracking)
+- Quick URL lookups by slug
+- Debugging or admin tools
+
+**When NOT to use it:**
+- URL creation is automatic via HasUrl trait events
+- Visit tracking is automatic via middleware/fallback route
+- Use the facade only when you need programmatic control
 
 ### Custom URL Types
 

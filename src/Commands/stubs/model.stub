@@ -1,0 +1,84 @@
+<?php
+
+namespace {{ namespace }};
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use RayzenAI\UrlManager\Traits\HasUrl;
+
+class {{ class }} extends Model
+{
+    use HasFactory, HasUrl;
+
+    protected $fillable = [
+        'name',
+        'slug',
+        'description',
+        'view_count',
+        'is_active',
+    ];
+
+    protected function casts(): array
+    {
+        return [
+            'is_active' => 'boolean',
+            'view_count' => 'integer',
+        ];
+    }
+
+    /**
+     * Define the URL path for this model
+     * Required by HasUrl trait
+     */
+    public function webUrlPath(): string
+    {
+        return '{{ slugPath }}/' . $this->slug;
+    }
+
+    /**
+     * Enable automatic view count tracking
+     * Optional - remove if you don't want view counting
+     */
+    public function getViewCountColumn(): ?string
+    {
+        return 'view_count';
+    }
+
+    /**
+     * Define Open Graph tags for SEO
+     * Optional but recommended for better social media sharing
+     */
+    public function ogTags(): array
+    {
+        return [
+            'title' => $this->name,
+            'description' => $this->description,
+            'type' => 'article',
+            // 'image' => $this->image_url,
+        ];
+    }
+
+    /**
+     * Define SEO metadata
+     * Optional - provides additional SEO customization
+     */
+    public function getSeoMetadata(): array
+    {
+        return [
+            'title' => $this->name,
+            'description' => $this->description,
+            'og_type' => 'article',
+            // 'keywords' => implode(', ', $this->tags ?? []),
+        ];
+    }
+
+    /**
+     * Define sitemap change frequency
+     * Optional - defaults to 'weekly' if not defined
+     * Options: 'always', 'hourly', 'daily', 'weekly', 'monthly', 'yearly', 'never'
+     */
+    public function getSitemapChangefreq(): string
+    {
+        return 'weekly';
+    }
+}
