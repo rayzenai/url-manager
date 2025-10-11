@@ -607,6 +607,35 @@ This command will:
 - **Visit Timestamp**
 - **Metadata** (additional custom data)
 
+### Testing Referrer Tracking
+
+The package includes a built-in test page to verify that referrer tracking is working correctly. This is especially useful when setting up the package or debugging referrer capture issues.
+
+**Access the test page** (only available in non-production environments):
+```
+https://yourdomain.com/_url-manager/test
+```
+
+The test page provides:
+- A visual interface to add and visit entity URLs
+- Automatic referrer capture via JavaScript (works even when browsers block HTTP Referer headers)
+- Real-time verification of referrer tracking
+- Instructions for checking captured referrers in Filament admin panel
+
+**How it works:**
+1. Visit the test page at `/_url-manager/test`
+2. Add your entity slugs (e.g., `entities/my-product`, `blog/my-post`)
+3. Click on the links to visit those pages
+4. Check Filament admin panel → URL Visits → Toggle "Referrer" column
+5. You should see the test page URL as the referrer
+
+The test page uses a multi-layer approach to ensure referrers are captured:
+- JavaScript-based capture (passes referrer as `?ref=` query parameter)
+- HTTP Referer header support
+- Multiple fallback sources (headers and server variables)
+
+**Note:** The test route is automatically disabled in production environments for security.
+
 ## Configuration
 
 The configuration file `config/url-manager.php` allows you to customize:

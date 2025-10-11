@@ -137,7 +137,7 @@ return [
     | Configure visit tracking behavior
     |
     */
-    'track_visits' => true,
+    'track_visits' => env('URL_MANAGER_TRACK_VISITS', true),
     'visit_queue' => 'low',
     
     /*
@@ -180,7 +180,7 @@ return [
     |
     */
     'middleware' => [
-        'enabled' => true,
+        'enabled' => env('URL_MANAGER_MIDDLEWARE_ENABLED', true),
         'alias' => 'track-url-visits',
         'auto_apply' => false,
     ],

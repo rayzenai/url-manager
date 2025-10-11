@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Khojde Entity Referrer Test</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 32px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 16px;
+        }
+
+        .config-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+
+        label {
+            display: block;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .help-text {
+            font-size: 12px;
+            color: #888;
+            margin-top: 5px;
+        }
+
+        .links-section {
+            margin-top: 30px;
+        }
+
+        .links-section h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 24px;
+        }
+
+        .link-input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .link-input-group input {
+            flex: 1;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 14px;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #218838;
+        }
+
+        .links-list {
+            margin-top: 20px;
+        }
+
+        .link-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s;
+        }
+
+        .link-item:hover {
+            background: #e9ecef;
+            transform: translateX(5px);
+        }
+
+        .link-item a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+            flex: 1;
+            word-break: break-all;
+        }
+
+        .link-item a:hover {
+            text-decoration: underline;
+        }
+
+        .link-item .remove-btn {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .link-item .remove-btn:hover {
+            background: #c82333;
+        }
+
+        .info-box {
+            background: #e7f3ff;
+            border-left: 4px solid #2196F3;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+
+        .info-box h3 {
+            color: #1976D2;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+
+        .info-box p {
+            color: #555;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .status {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #28a745;
+            color: white;
+            padding: 15px 25px;
+            border-radius: 50px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            font-weight: 600;
+            display: none;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+            }
+            to {
+                transform: translateX(0);
+            }
+        }
+
+        .entity-type-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-left: 8px;
+            text-transform: uppercase;
+        }
+
+        .badge-entity {
+            background: #e3f2fd;
+            color: #1976d2;
+        }
+
+        .badge-custom {
+            background: #f3e5f5;
+            color: #7b1fa2;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Khojde Entity Referrer Test</h1>
+        <p class="subtitle">Test entity URL tracking with external referrer simulation</p>
+
+        <div class="config-section">
+            <label for="baseUrl">Khojde Application Base URL</label>
+            <input
+                type="text"
+                id="baseUrl"
+                placeholder="https://khojde.test or https://khojde.com"
+                value="https://khojde.test"
+            >
+            <p class="help-text">Enter your Khojde application URL (without trailing slash)</p>
+        </div>
+
+        <div class="links-section">
+            <h2>Test Entity Links</h2>
+
+            <div class="link-input-group">
+                <input
+                    type="text"
+                    id="newSlug"
+                    placeholder="Enter entity slug (e.g., entities/my-entity or my-custom-page)"
+                >
+                <button class="btn btn-success" onclick="addLink()">Add Link</button>
+            </div>
+
+            <div class="info-box">
+                <h3>How to use:</h3>
+                <p>
+                    <strong>Important:</strong> Access this page via <code style="background: #fff; padding: 2px 6px; border-radius: 3px;">/_url-manager/test</code> route (not as a file:// URL)<br><br>
+                    1. Visit: <strong>https://khojde.test/_url-manager/test</strong> (or your domain)<br>
+                    2. Add entity slugs from your database (check the `urls` table)<br>
+                    3. Click the links below to visit those entity pages<br>
+                    4. Check your Filament admin panel → URL Visits → Toggle "Referrer" column<br>
+                    5. You should see this test page URL as the referrer!
+                </p>
+            </div>
+
+            <div class="links-list" id="linksList">
+                <!-- Sample links - update these with your actual entity slugs -->
+                <div class="link-item">
+                    <a href="#" data-slug="entities/sample-entity" onclick="visitLink(event, this)">
+                        entities/sample-entity
+                        <span class="entity-type-badge badge-entity">Entity</span>
+                    </a>
+                    <button class="remove-btn" onclick="removeLink(this)">Remove</button>
+                </div>
+                <div class="link-item">
+                    <a href="#" data-slug="entities/test-entity" onclick="visitLink(event, this)">
+                        entities/test-entity
+                        <span class="entity-type-badge badge-entity">Entity</span>
+                    </a>
+                    <button class="remove-btn" onclick="removeLink(this)">Remove</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="info-box" style="margin-top: 30px; background: #fff3cd; border-left-color: #ffc107;">
+            <h3 style="color: #856404;">Pro Tip:</h3>
+            <p style="color: #856404;">
+                To get actual entity slugs from your database, run:<br>
+                <code style="background: #fff; padding: 2px 6px; border-radius: 3px; font-family: monospace;">
+                    php artisan tinker
+                </code><br>
+                Then: <code style="background: #fff; padding: 2px 6px; border-radius: 3px; font-family: monospace;">
+                    \RayzenAI\UrlManager\Models\Url::where('status', 'active')->pluck('slug')
+                </code>
+            </p>
+        </div>
+    </div>
+
+    <div class="status" id="status">Link added!</div>
+
+    <script>
+        // Update all links when base URL changes
+        document.getElementById('baseUrl').addEventListener('input', updateAllLinks);
+
+        function updateAllLinks() {
+            const baseUrl = document.getElementById('baseUrl').value.trim();
+            const links = document.querySelectorAll('#linksList a');
+
+            links.forEach(link => {
+                const slug = link.getAttribute('data-slug');
+                link.href = baseUrl + '/' + slug;
+            });
+        }
+
+        function addLink() {
+            const slug = document.getElementById('newSlug').value.trim();
+
+            if (!slug) {
+                alert('Please enter a slug');
+                return;
+            }
+
+            const baseUrl = document.getElementById('baseUrl').value.trim();
+            const linksList = document.getElementById('linksList');
+
+            // Determine badge type
+            const badgeClass = slug.startsWith('entities/') ? 'badge-entity' : 'badge-custom';
+            const badgeText = slug.startsWith('entities/') ? 'Entity' : 'Custom';
+
+            const linkItem = document.createElement('div');
+            linkItem.className = 'link-item';
+            linkItem.innerHTML = `
+                <a href="${baseUrl}/${slug}" data-slug="${slug}" onclick="visitLink(event, this)">
+                    ${slug}
+                    <span class="entity-type-badge ${badgeClass}">${badgeText}</span>
+                </a>
+                <button class="remove-btn" onclick="removeLink(this)">Remove</button>
+            `;
+
+            linksList.appendChild(linkItem);
+            document.getElementById('newSlug').value = '';
+
+            showStatus('Link added!');
+        }
+
+        function removeLink(btn) {
+            btn.parentElement.remove();
+            showStatus('Link removed!');
+        }
+
+        function visitLink(event, link) {
+            // Capture the current page URL and add it as a query parameter
+            // This ensures the referrer is captured even if browser blocks the HTTP header
+            event.preventDefault();
+
+            const url = new URL(link.href);
+            const currentPage = window.location.href;
+
+            // Add referrer as query parameter if not already present
+            if (!url.searchParams.has('ref') && !url.searchParams.has('referer')) {
+                url.searchParams.set('ref', currentPage);
+            }
+
+            showStatus('Opening link...');
+
+            // Navigate to the modified URL
+            window.location.href = url.toString();
+
+            return false;
+        }
+
+        function showStatus(message) {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.style.display = 'block';
+
+            setTimeout(() => {
+                status.style.display = 'none';
+            }, 2000);
+        }
+
+        // Allow Enter key to add links
+        document.getElementById('newSlug').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                addLink();
+            }
+        });
+
+        // Initialize links on page load
+        updateAllLinks();
+    </script>
+</body>
+</html>

@@ -16,9 +16,17 @@ class VisitTracker
         if (!config('url-manager.track_visits', true)) {
             return;
         }
-        
+
         $request = $request ?? request();
-        
+
+        // Try multiple sources for referrer (query param, header, alternative headers)
+        // Query params are checked first to support JavaScript-based referrer capture
+        $referer = $request->input('ref')
+            ?? $request->input('referer')
+            ?? $request->header('referer')
+            ?? $request->header('http_referer')
+            ?? $request->server('HTTP_REFERER');
+
         // Dispatch job to record visit asynchronously
         RecordUrlVisit::dispatch(
             $url,
@@ -26,7 +34,7 @@ class VisitTracker
             [
                 'ip' => $request->ip(),
                 'user_agent' => $request->userAgent(),
-                'referer' => $request->header('referer'),
+                'referer' => $referer,
             ]
         );
         
