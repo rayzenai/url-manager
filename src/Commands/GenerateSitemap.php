@@ -13,64 +13,66 @@ class GenerateSitemap extends Command
 
     public function handle()
     {
-        if (!config('url-manager.sitemap.enabled', true)) {
+        if (! config('url-manager.sitemap.enabled', true)) {
             $this->error('Sitemap generation is disabled in configuration.');
+
             return 1;
         }
 
         $this->info('Generating sitemap...');
-        
+
         $limit = (int) $this->option('limit');
         $maxPerFile = config('url-manager.sitemap.max_urls_per_file', 10000);
-        
+
         // Get all active URLs
         $totalUrls = Url::active()->count();
-        
+
         if ($totalUrls === 0) {
             $this->warn('No active URLs found.');
+
             return 0;
         }
-        
+
         $this->info("Found {$totalUrls} active URLs");
-        
+
         // Determine if we need multiple sitemap files
         if ($totalUrls > $maxPerFile) {
             $this->generateMultipleSitemaps($totalUrls, $maxPerFile, $limit);
         } else {
             $this->generateSingleSitemap($limit);
         }
-        
+
         $this->info('Sitemap generated successfully!');
-        
+
         return 0;
     }
-    
+
     protected function generateSingleSitemap(int $limit)
     {
         $urls = Url::active()
             ->with('urable')
             ->limit($limit)
             ->get();
-        
+
         $xml = $this->generateXml($urls);
-        
+
         $path = config('url-manager.sitemap.path', public_path('sitemap.xml'));
         file_put_contents($path, $xml);
-        
+
         $this->info("Sitemap saved to: {$path}");
     }
-    
+
     protected function generateMultipleSitemaps(int $totalUrls, int $maxPerFile, int $limit)
     {
         $numberOfFiles = ceil(min($totalUrls, $limit) / $maxPerFile);
-        
+
         // Generate sitemap index
         $sitemapIndex = $this->generateSitemapIndex($numberOfFiles);
         $indexPath = config('url-manager.sitemap.path', public_path('sitemap.xml'));
         file_put_contents($indexPath, $sitemapIndex);
-        
+
         $this->info("Sitemap index saved to: {$indexPath}");
-        
+
         // Generate individual sitemap files
         for ($i = 0; $i < $numberOfFiles; $i++) {
             $offset = $i * $maxPerFile;
@@ -79,76 +81,104 @@ class GenerateSitemap extends Command
                 ->offset($offset)
                 ->limit(min($maxPerFile, $limit - $offset))
                 ->get();
-            
+
             $xml = $this->generateXml($urls);
-            
+
             $filePath = public_path("sitemap-{$i}.xml");
             file_put_contents($filePath, $xml);
-            
+
             $this->info("Sitemap part {$i} saved to: {$filePath}");
         }
     }
-    
+
     protected function generateXml($urls): string
     {
         // Get the configured frontend URL for sitemap generation
         $settings = \RayzenAI\UrlManager\Models\GoogleSearchConsoleSetting::getSettings();
         $siteUrl = rtrim($settings->frontend_url ?: url('/'), '/');
-        
-        $xml = '<?xml version="1.0" encoding="UTF-8"?>' . PHP_EOL;
+
+        $xml = '<?xml version="1.0" encoding="UTF-8"?>'.PHP_EOL;
         $xml .= '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" ';
         $xml .= 'xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" ';
         $xml .= 'xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9 ';
-        $xml .= 'http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">' . PHP_EOL;
-        
+        $xml .= 'http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">'.PHP_EOL;
+
         // Add homepage first
-        $xml .= '  <url>' . PHP_EOL;
-        $xml .= '    <loc>' . $siteUrl . '/' . '</loc>' . PHP_EOL;
-        $xml .= '    <lastmod>' . now()->toW3cString() . '</lastmod>' . PHP_EOL;
-        $xml .= '    <changefreq>daily</changefreq>' . PHP_EOL;
-        $xml .= '    <priority>1.0</priority>' . PHP_EOL;
-        $xml .= '  </url>' . PHP_EOL;
-        
+        $xml .= '  <url>'.PHP_EOL;
+        $xml .= '    <loc>'.$siteUrl.'/'.'</loc>'.PHP_EOL;
+        $xml .= '    <lastmod>'.now()->toW3cString().'</lastmod>'.PHP_EOL;
+        $xml .= '    <changefreq>daily</changefreq>'.PHP_EOL;
+        $xml .= '    <priority>1.0</priority>'.PHP_EOL;
+        $xml .= '  </url>'.PHP_EOL;
+
+        // Add custom routes from configuration
+        $customRoutes = config('url-manager.sitemap.custom_routes', []);
+        foreach ($customRoutes as $route) {
+            $xml .= $this->generateCustomRouteXml($route, $siteUrl);
+        }
+
         foreach ($urls as $url) {
-            if (!$url->shouldIndex()) {
+            if (! $url->shouldIndex()) {
                 continue;
             }
-            
-            $xml .= '  <url>' . PHP_EOL;
-            $xml .= '    <loc>' . htmlspecialchars($url->getAbsoluteUrl()) . '</loc>' . PHP_EOL;
-            
+
+            $xml .= '  <url>'.PHP_EOL;
+            $xml .= '    <loc>'.htmlspecialchars($url->getAbsoluteUrl()).'</loc>'.PHP_EOL;
+
             if ($url->last_modified_at) {
-                $xml .= '    <lastmod>' . $url->last_modified_at->toW3cString() . '</lastmod>' . PHP_EOL;
+                $xml .= '    <lastmod>'.$url->last_modified_at->toW3cString().'</lastmod>'.PHP_EOL;
             }
-            
-            $xml .= '    <changefreq>' . $url->getSitemapChangefreq() . '</changefreq>' . PHP_EOL;
-            $xml .= '    <priority>' . $url->getSitemapPriority() . '</priority>' . PHP_EOL;
-            $xml .= '  </url>' . PHP_EOL;
+
+            $xml .= '    <changefreq>'.$url->getSitemapChangefreq().'</changefreq>'.PHP_EOL;
+            $xml .= '    <priority>'.$url->getSitemapPriority().'</priority>'.PHP_EOL;
+            $xml .= '  </url>'.PHP_EOL;
         }
-        
-        $xml .= '</urlset>' . PHP_EOL;
-        
+
+        $xml .= '</urlset>'.PHP_EOL;
+
         return $xml;
     }
-    
+
+    protected function generateCustomRouteXml(array $route, string $siteUrl): string
+    {
+        $path = ltrim($route['path'] ?? '', '/');
+        $priority = $route['priority'] ?? config('url-manager.sitemap.default_priority', 0.5);
+        $changefreq = $route['changefreq'] ?? config('url-manager.sitemap.default_changefreq', 'weekly');
+        $lastmod = $route['lastmod'] ?? now();
+
+        // Convert lastmod to Carbon instance if it's a string
+        if (is_string($lastmod)) {
+            $lastmod = \Carbon\Carbon::parse($lastmod);
+        }
+
+        $xml = '  <url>'.PHP_EOL;
+        $xml .= '    <loc>'.htmlspecialchars($siteUrl.'/'.$path).'</loc>'.PHP_EOL;
+        $xml .= '    <lastmod>'.$lastmod->toW3cString().'</lastmod>'.PHP_EOL;
+        $xml .= '    <changefreq>'.$changefreq.'</changefreq>'.PHP_EOL;
+        $xml .= '    <priority>'.$priority.'</priority>'.PHP_EOL;
+        $xml .= '  </url>'.PHP_EOL;
+
+        return $xml;
+    }
+
     protected function generateSitemapIndex(int $numberOfFiles): string
     {
         // Get the configured frontend URL for sitemap generation
         $settings = \RayzenAI\UrlManager\Models\GoogleSearchConsoleSetting::getSettings();
         $siteUrl = rtrim($settings->frontend_url ?: url('/'), '/');
-        
-        $xml = '<?xml version="1.0" encoding="UTF-8"?>' . PHP_EOL;
-        $xml .= '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' . PHP_EOL;
-        
+
+        $xml = '<?xml version="1.0" encoding="UTF-8"?>'.PHP_EOL;
+        $xml .= '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'.PHP_EOL;
+
         for ($i = 0; $i < $numberOfFiles; $i++) {
-            $xml .= '  <sitemap>' . PHP_EOL;
-            $xml .= '    <loc>' . $siteUrl . "/sitemap-{$i}.xml" . '</loc>' . PHP_EOL;
-            $xml .= '    <lastmod>' . now()->toW3cString() . '</lastmod>' . PHP_EOL;
-            $xml .= '  </sitemap>' . PHP_EOL;
+            $xml .= '  <sitemap>'.PHP_EOL;
+            $xml .= '    <loc>'.$siteUrl."/sitemap-{$i}.xml".'</loc>'.PHP_EOL;
+            $xml .= '    <lastmod>'.now()->toW3cString().'</lastmod>'.PHP_EOL;
+            $xml .= '  </sitemap>'.PHP_EOL;
         }
-        
-        $xml .= '</sitemapindex>' . PHP_EOL;
-        
+
+        $xml .= '</sitemapindex>'.PHP_EOL;
+
         return $xml;
     }
 }

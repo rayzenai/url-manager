@@ -88,7 +88,26 @@ return [
             'page' => 0.6,
             'blog' => 0.6,
         ],
-        
+
+        /*
+        |--------------------------------------------------------------------------
+        | Custom Routes
+        |--------------------------------------------------------------------------
+        |
+        | Define custom routes that should always be included in the sitemap,
+        | regardless of whether they have URL records in the database.
+        | Useful for static pages, custom Livewire components, etc.
+        |
+        */
+        'custom_routes' => [
+            // [
+            //     'path' => '/about',
+            //     'priority' => 0.7,
+            //     'changefreq' => 'monthly',
+            //     'lastmod' => null, // Optional: Carbon instance or date string
+            // ],
+        ],
+
         /*
         |--------------------------------------------------------------------------
         | Image Sitemap Configuration
@@ -97,14 +116,14 @@ return [
         | Configure which models to include or exclude in image sitemaps
         |
         | Note: Image sitemap generation requires the kirantimsina/file-manager package.
-        | For optimal performance, run 'php artisan file-manager:populate-seo-titles' 
+        | For optimal performance, run 'php artisan file-manager:populate-seo-titles'
         | to pre-populate SEO titles and avoid polymorphic queries during sitemap generation.
         |
         */
         'images' => [
             'enabled' => true,
             'max_images_per_file' => 5000,
-            
+
             /*
             | Image size to use in sitemap URLs
             | Options:
@@ -114,7 +133,7 @@ return [
             */
             'image_size' => 'auto',
         ],
-        
+
         /*
         |--------------------------------------------------------------------------
         | Video Sitemap Configuration
@@ -139,7 +158,7 @@ return [
     */
     'track_visits' => env('URL_MANAGER_TRACK_VISITS', true),
     'visit_queue' => 'low',
-    
+
     /*
     |--------------------------------------------------------------------------
     | API Route Path Conversions
@@ -153,7 +172,7 @@ return [
     'api_path_conversions' => [
         // API path pattern => URL slug pattern
         '/^api\/V[0-9]+\/products\/(.+)$/' => 'product/$1',     // api/V2/products/slug -> product/slug
-        '/^api\/V[0-9]+\/category\/(.+)$/' => 'category/$1',    // api/V2/category/slug -> category/slug  
+        '/^api\/V[0-9]+\/category\/(.+)$/' => 'category/$1',    // api/V2/category/slug -> category/slug
         '/^api\/V[0-9]+\/categories\/(.+)$/' => 'category/$1',  // api/V2/categories/slug -> category/slug
         '/^api\/V[0-9]+\/blog\/(.+)$/' => 'blog/$1',            // api/V2/blog/slug -> blog/slug
         '/^api\/V[0-9]+\/occasion\/(.+)$/' => 'occasion/$1',    // api/V2/occasion/slug -> occasion/slug

@@ -327,6 +327,51 @@ php artisan sitemap:generate
 
 For large sites (>10,000 URLs), the package automatically creates multiple sitemap files with an index.
 
+#### Including Custom Static Routes
+
+You can include static routes in your sitemap that aren't tied to database models. This is useful for:
+- Static pages (About, Contact, Terms of Service)
+- Custom Livewire components
+- API documentation pages
+- Any route that should appear in your sitemap but doesn't use the HasUrl trait
+
+Configure custom routes in `config/url-manager.php`:
+
+```php
+'sitemap' => [
+    'custom_routes' => [
+        [
+            'path' => '/about',
+            'priority' => 0.7,
+            'changefreq' => 'monthly',
+            'lastmod' => null, // Optional: Carbon instance or date string
+        ],
+        [
+            'path' => '/contact',
+            'priority' => 0.6,
+            'changefreq' => 'yearly',
+        ],
+        [
+            'path' => '/blog',
+            'priority' => 0.8,
+            'changefreq' => 'daily',
+            'lastmod' => now(), // Can use Carbon instance
+        ],
+    ],
+],
+```
+
+**Available Options:**
+- `path` (required): The route path (e.g., `/about`, `/contact`)
+- `priority` (optional): SEO priority from 0.0 to 1.0 (default: 0.5)
+- `changefreq` (optional): How often the page changes: `always`, `hourly`, `daily`, `weekly`, `monthly`, `yearly`, `never` (default: `weekly`)
+- `lastmod` (optional): Last modification date as Carbon instance or date string (default: current time)
+
+These routes will be automatically included when you run:
+```bash
+php artisan sitemap:generate
+```
+
 ### Submitting Sitemaps to Search Engines
 
 Since Google deprecated the ping endpoint in June 2023 and Bing has also discontinued their ping service, API credentials are now required for automated sitemap submission.
@@ -672,7 +717,22 @@ return [
             'category' => 0.9,
             'page' => 0.6,
         ],
-        
+
+        // Custom static routes to include in sitemap
+        'custom_routes' => [
+            [
+                'path' => '/about',
+                'priority' => 0.7,
+                'changefreq' => 'monthly',
+                'lastmod' => null, // Optional: Carbon instance or date string
+            ],
+            [
+                'path' => '/contact',
+                'priority' => 0.6,
+                'changefreq' => 'yearly',
+            ],
+        ],
+
         // Image sitemap configuration
         'images' => [
             'enabled' => true,
