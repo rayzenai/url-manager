@@ -49,6 +49,74 @@ class UrlVisit extends Model
     }
 
     /**
+     * Sanitize referer URL by removing tracking parameters and ensuring it fits database constraints
+     */
+    protected static function sanitizeReferer(?string $referer): ?string
+    {
+        if (empty($referer)) {
+            return null;
+        }
+
+        // Parse the URL
+        $parsedUrl = parse_url($referer);
+
+        if ($parsedUrl === false || !isset($parsedUrl['host'])) {
+            // Invalid URL, truncate and return
+            return substr($referer, 0, 255);
+        }
+
+        // Parse query string if it exists
+        $queryParams = [];
+        if (isset($parsedUrl['query'])) {
+            parse_str($parsedUrl['query'], $queryParams);
+
+            // Remove Facebook click ID (fbclid) completely
+            unset($queryParams['fbclid']);
+
+            // Remove UTM parameters that bloat URLs
+            unset(
+                $queryParams['utm_campaign'],
+                $queryParams['utm_id'],
+                $queryParams['utm_content'],
+                $queryParams['utm_term']
+            );
+
+            // Keep only utm_source and utm_medium as they're most useful
+        }
+
+        // Rebuild the URL
+        $cleanUrl = '';
+
+        if (isset($parsedUrl['scheme'])) {
+            $cleanUrl .= $parsedUrl['scheme'] . '://';
+        }
+
+        if (isset($parsedUrl['host'])) {
+            $cleanUrl .= $parsedUrl['host'];
+        }
+
+        if (isset($parsedUrl['port'])) {
+            $cleanUrl .= ':' . $parsedUrl['port'];
+        }
+
+        if (isset($parsedUrl['path'])) {
+            $cleanUrl .= $parsedUrl['path'];
+        }
+
+        // Add cleaned query string if params remain
+        if (!empty($queryParams)) {
+            $cleanUrl .= '?' . http_build_query($queryParams);
+        }
+
+        if (isset($parsedUrl['fragment'])) {
+            $cleanUrl .= '#' . $parsedUrl['fragment'];
+        }
+
+        // Ensure it fits in the database column (255 chars)
+        return substr($cleanUrl, 0, 255);
+    }
+
+    /**
      * Create a visit record from request data
      */
     public static function createFromRequest(Url $url, ?int $userId = null, array $metadata = []): self
@@ -57,7 +125,10 @@ class UrlVisit extends Model
         $userAgent = $metadata['user_agent'] ?? request()->userAgent();
         $ipAddress = $metadata['ip'] ?? request()->ip();
         $referer = $metadata['referer'] ?? request()->header('referer');
-        
+
+        // Sanitize referer to remove tracking parameters and ensure it fits DB constraints
+        $referer = self::sanitizeReferer($referer);
+
         // Remove these from metadata to avoid duplication
         unset($metadata['user_agent'], $metadata['ip'], $metadata['referer']);
         
