@@ -7,37 +7,64 @@ use RayzenAI\UrlManager\Models\Url;
 
 /**
  * HasUrl Trait
- * 
+ *
  * Provides URL management functionality for Eloquent models.
- * 
+ *
  * Requirements for models using this trait:
  * 1. Model MUST have an 'is_active' boolean field to control URL visibility
+ *    (override activeUrlField() if using a different field name)
  * 2. Model MUST implement webUrlPath() method that returns the desired URL path
- * 3. Model MAY implement ogTags() method for Open Graph meta tags
- * 4. Model MAY implement getSeoMetadata() for additional SEO metadata
+ * 3. Model MAY override ogTags() method for Open Graph meta tags
+ * 4. Model MAY override getSeoMetadata() for additional SEO metadata
  * 5. Model MAY implement getViewCountColumn() to track view counts
  * 6. Model MAY implement recordVisit($userId, $metadata) for custom visit tracking
- * 
+ * 7. Model MAY override ogImageField() to specify the OG image field (default: 'og_image')
+ * 8. Model MAY override ogImageFallbackField() to specify a fallback image field (default: 'image')
+ *
+ * OG Tags returned by ogTags():
+ * - title: The OG title (from meta_title, name, or title field)
+ * - description: The OG description (from meta_description or description field)
+ * - type: The OG type (default: 'website')
+ * - image: The OG image URL (from og_image field, falls back to image field)
+ * - image_width: The OG image width (default: 1200)
+ * - image_height: The OG image height (default: 630)
+ * - image_alt: The OG image alt text (defaults to title)
+ * - url: The canonical URL
+ * - site_name: The site name from config
+ *
  * Example implementation:
  * ```php
  * class Product extends Model
  * {
  *     use HasUrl;
- * 
+ *
  *     public function webUrlPath(): string
  *     {
  *         return 'products/' . $this->slug;
  *     }
- * 
+ *
+ *     // Optional: Override if using different field for OG image
+ *     public function ogImageFallbackField(): ?string
+ *     {
+ *         return 'featured_image'; // Falls back to this if og_image is empty
+ *     }
+ *
+ *     // Optional: Override for custom OG tags
  *     public function ogTags(): array
  *     {
  *         return [
  *             'title' => $this->name,
  *             'description' => $this->description,
- *             'image' => $this->image_url,
+ *             'type' => 'product',
+ *             'image' => $this->getOgImageUrl(),
+ *             'image_width' => 1200,
+ *             'image_height' => 630,
+ *             'image_alt' => $this->name,
+ *             'url' => $this->webUrl(),
+ *             'site_name' => config('app.name'),
  *         ];
  *     }
- * 
+ *
  *     public function getViewCountColumn(): ?string
  *     {
  *         return 'view_count'; // Return null if no view counting needed
@@ -274,29 +301,99 @@ trait HasUrl
     }
 
     /**
+     * Get the OG image field name for this model
+     * Override this in your model if using a different field name
+     */
+    public function ogImageField(): string
+    {
+        return 'og_image';
+    }
+
+    /**
+     * Get the fallback image field name for OG image
+     * Override this in your model to specify a fallback image field
+     */
+    public function ogImageFallbackField(): ?string
+    {
+        return 'image';
+    }
+
+    /**
+     * Get the OG image URL for this model
+     * Returns og_image if set, otherwise falls back to the fallback field
+     */
+    public function getOgImageUrl(): ?string
+    {
+        $ogImageField = $this->ogImageField();
+        $fallbackField = $this->ogImageFallbackField();
+
+        // Try og_image field first
+        if (!empty($this->{$ogImageField})) {
+            return $this->{$ogImageField};
+        }
+
+        // Try fallback field
+        if ($fallbackField && !empty($this->{$fallbackField})) {
+            return $this->{$fallbackField};
+        }
+
+        return null;
+    }
+
+    /**
      * Get Open Graph tags for this model
+     *
+     * Returns an array with the following keys:
+     * - title: The OG title (required)
+     * - description: The OG description (required)
+     * - type: The OG type (default: 'website')
+     * - image: The OG image URL (optional)
+     * - image_width: The OG image width (default: 1200)
+     * - image_height: The OG image height (default: 630)
+     * - image_alt: The OG image alt text (optional)
+     * - url: The canonical URL (optional)
+     * - site_name: The site name (optional)
+     *
+     * Override this in your model to customize the OG tags
      */
     public function ogTags(): array
     {
+        $title = $this->meta_title ?? $this->name ?? $this->title ?? null;
+        $description = $this->meta_description ?? $this->description ?? null;
+        $image = $this->getOgImageUrl();
+
         return [
-            'title' => $this->name ?? $this->title ?? null,
-            'description' => $this->description ?? null,
+            'title' => $title,
+            'description' => $description,
             'type' => 'website',
+            'image' => $image,
+            'image_width' => 1200,
+            'image_height' => 630,
+            'image_alt' => $title,
+            'url' => $this->webUrl(),
+            'site_name' => config('app.name'),
         ];
     }
 
     /**
      * Get SEO metadata for this model
+     * Combines OG tags with additional SEO metadata
      */
     public function getSeoMetadata(): array
     {
         $ogTags = $this->ogTags();
-        
+
         return [
             'title' => $ogTags['title'] ?? null,
             'description' => $ogTags['description'] ?? null,
             'og_type' => $ogTags['type'] ?? 'website',
             'og_image' => $ogTags['image'] ?? null,
+            'og_image_width' => $ogTags['image_width'] ?? 1200,
+            'og_image_height' => $ogTags['image_height'] ?? 630,
+            'og_image_alt' => $ogTags['image_alt'] ?? null,
+            'og_url' => $ogTags['url'] ?? null,
+            'og_site_name' => $ogTags['site_name'] ?? null,
+            'canonical_url' => $ogTags['url'] ?? null,
         ];
     }
 }
