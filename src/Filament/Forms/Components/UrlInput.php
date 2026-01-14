@@ -36,19 +36,40 @@ class UrlInput extends TextInput
                     $set('slug', Str::slug($state));
                 }
             })
-            ->unique(ignoreRecord: true)
             ->rules([
                 function (Get $get, ?Model $record) {
                     return function (string $attribute, $value, Closure $fail) use ($record) {
-                        // Also check if slug will conflict in URLs table
-                        // Build the full URL path based on model type
+                        if (empty($value)) {
+                            return;
+                        }
+
+                        // Get model class from record or from component's model
+                        $modelClass = $record ? get_class($record) : $this->getModel();
+
+                        // Check model's own table for uniqueness
+                        if ($modelClass && class_exists($modelClass)) {
+                            $query = $modelClass::where('slug', $value);
+
+                            if ($record?->exists) {
+                                $query->where('id', '!=', $record->id);
+                            }
+
+                            $existingModel = $query->first();
+                            if ($existingModel) {
+                                $modelName = class_basename($modelClass);
+                                $fail("Already used by {$modelName} #{$existingModel->id}");
+
+                                return;
+                            }
+                        }
+
+                        // Also check URLs table
                         $urlPath = $value;
 
                         if ($this->modelClass) {
-                            $modelClass = $this->evaluate($this->modelClass);
-                            $modelBasename = class_basename($modelClass);
+                            $evalModelClass = $this->evaluate($this->modelClass);
+                            $modelBasename = class_basename($evalModelClass);
 
-                            // Determine URL prefix based on model type
                             $urlPath = match ($modelBasename) {
                                 'Brand' => "brand/{$value}",
                                 'Category' => $value,
@@ -58,30 +79,33 @@ class UrlInput extends TextInput
                             };
                         }
 
-                        // Check if this URL path exists (for active URLs)
-                        $query = Url::where('slug', $urlPath)
+                        $urlQuery = Url::where('slug', $urlPath)
                             ->where('status', Url::STATUS_ACTIVE);
 
-                        // If updating, ignore the current record's URL
                         if ($record?->exists && method_exists($record, 'url') && $record->url) {
-                            $query->where('id', '!=', $record->url->id);
+                            $urlQuery->where('id', '!=', $record->url->id);
                         }
 
-                        if ($query->exists()) {
-                            $fail('This URL slug is already in use.');
+                        $existingUrl = $urlQuery->first();
+                        if ($existingUrl) {
+                            $modelName = class_basename($existingUrl->urable_type ?? 'Record');
+                            $fail("Already used by {$modelName} #{$existingUrl->urable_id}");
                         }
                     };
                 },
             ]);
     }
 
+    /**
+     * Set the source field to auto-generate the slug from.
+     * The source field must have ->live(onBlur: true) for real-time generation.
+     */
     public function sourceField(string|Closure $field): static
     {
         $this->sourceField = $field;
 
-        // Set up auto-generation from source field when creating new records
+        // Set up auto-generation from source field when creating new records (on initial load)
         $this->afterStateHydrated(function (Get $get, Set $set, ?string $state, ?Model $record) use ($field) {
-            // Only auto-generate if slug is empty and we're creating a new record
             if (empty($state) && ! $record?->exists) {
                 $sourceValue = $get($this->evaluate($field));
                 if ($sourceValue) {
