@@ -283,12 +283,14 @@ trait HasUrl
 
         if ($newPath !== $oldPath) {
             // Check for circular redirect chains before creating redirect
+            // Note: This is a safety fallback - validation should catch this first
             $chain = Url::detectRedirectChain($oldPath, $newPath);
 
             if ($chain) {
                 throw new \RuntimeException(
                     'Cannot update slug: This would create a circular redirect chain: ' .
-                    implode(' → ', $chain)
+                    implode(' → ', $chain) .
+                    ' (This should have been caught by validation - please check UrlInput configuration)'
                 );
             }
 

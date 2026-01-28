@@ -39,7 +39,7 @@ class UrlInput extends TextInput
 
                 return ! $this->canUpdateSlug;
             })
-            ->afterStateUpdated(function (Get $get, Set $set, ?string $state, ?string $old, ?Model $record) {
+            ->afterStateUpdated(function (Set $set, ?string $state) {
                 // Slugify the manually entered value
                 if ($state !== null && $state !== '') {
                     $set('slug', Str::slug($state));
@@ -47,7 +47,7 @@ class UrlInput extends TextInput
             })
             ->dehydrateStateUsing(fn (?string $state): ?string => $state ? Str::slug($state) : null)
             ->rules([
-                function (Get $get, ?Model $record) {
+                function (?Model $record) {
                     return function (string $attribute, $value, Closure $fail) use ($record) {
                         if (empty($value)) {
                             return;
@@ -100,6 +100,30 @@ class UrlInput extends TextInput
                         if ($existingUrl) {
                             $modelName = class_basename($existingUrl->urable_type ?? 'Record');
                             $fail("Already used by {$modelName} #{$existingUrl->urable_id}");
+                            return;
+                        }
+
+                        // Check for circular redirect chains when updating slugs
+                        if ($this->canUpdateSlug && $record?->exists && method_exists($record, 'url') && $record->url) {
+                            $oldPath = $record->url->slug;
+
+                            // Get the new path by temporarily setting slug and calling webUrlPath()
+                            // This ensures we use the same logic as HasUrl trait
+                            $originalSlug = $record->slug;
+                            $record->slug = $value;
+                            $newPath = method_exists($record, 'webUrlPath')
+                                ? $record->webUrlPath()
+                                : $urlPath;
+                            $record->slug = $originalSlug; // Restore original
+
+                            if ($oldPath !== $newPath) {
+                                $chain = Url::detectRedirectChain($oldPath, $newPath);
+
+                                if ($chain) {
+                                    $fail('Cannot update slug: This would create a circular redirect chain: ' . implode(' → ', $chain));
+                                    return;
+                                }
+                            }
                         }
                     };
                 },
