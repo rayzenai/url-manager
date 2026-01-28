@@ -18,6 +18,8 @@ class UrlInput extends TextInput
 
     protected string|Closure|null $urlType = null;
 
+    protected bool $canUpdateSlug = false;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -29,13 +31,21 @@ class UrlInput extends TextInput
             ->prefix('/')
             ->helperText('URL slug for this item. Leave empty to auto-generate from the name.')
             ->reactive()
-            ->disabledOn('edit')
+            ->disabled(function (?Model $record) {
+                // Allow editing on create, or on edit if canUpdateSlug is enabled
+                if (! $record?->exists) {
+                    return false;
+                }
+
+                return ! $this->canUpdateSlug;
+            })
             ->afterStateUpdated(function (Get $get, Set $set, ?string $state, ?string $old, ?Model $record) {
                 // Slugify the manually entered value
                 if ($state !== null && $state !== '') {
                     $set('slug', Str::slug($state));
                 }
             })
+            ->dehydrateStateUsing(fn (?string $state): ?string => $state ? Str::slug($state) : null)
             ->rules([
                 function (Get $get, ?Model $record) {
                     return function (string $attribute, $value, Closure $fail) use ($record) {
@@ -127,6 +137,19 @@ class UrlInput extends TextInput
     public function urlType(string|Closure $type): static
     {
         $this->urlType = $type;
+
+        return $this;
+    }
+
+    /**
+     * Allow updating the slug when editing existing records.
+     * By default, slugs are disabled on edit to prevent breaking existing URLs.
+     * When enabled, automatically creates redirects from old to new URLs via the HasUrl trait.
+     * Circular redirect chains (A→B, B→A or A→B→C→A) are automatically detected and prevented.
+     */
+    public function allowUpdatingSlug(bool $condition = true): static
+    {
+        $this->canUpdateSlug = $condition;
 
         return $this;
     }

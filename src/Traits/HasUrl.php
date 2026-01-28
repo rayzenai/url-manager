@@ -13,13 +13,15 @@ use RayzenAI\UrlManager\Models\Url;
  * Requirements for models using this trait:
  * 1. Model MUST have an 'is_active' boolean field to control URL visibility
  *    (override activeUrlField() if using a different field name)
- * 2. Model MUST implement webUrlPath() method that returns the desired URL path
- * 3. Model MAY override ogTags() method for Open Graph meta tags
- * 4. Model MAY override getSeoMetadata() for additional SEO metadata
- * 5. Model MAY implement getViewCountColumn() to track view counts
- * 6. Model MAY implement recordVisit($userId, $metadata) for custom visit tracking
- * 7. Model MAY override ogImageField() to specify the OG image field (default: 'og_image')
- * 8. Model MAY override ogImageFallbackField() to specify a fallback image field (default: 'image')
+ * 2. Model MUST have a 'slug' field for URL generation
+ *    (override slugField() if using a different field name)
+ * 3. Model MUST implement webUrlPath() method that returns the desired URL path
+ * 4. Model MAY override ogTags() method for Open Graph meta tags
+ * 5. Model MAY override getSeoMetadata() for additional SEO metadata
+ * 6. Model MAY implement getViewCountColumn() to track view counts
+ * 7. Model MAY implement recordVisit($userId, $metadata) for custom visit tracking
+ * 8. Model MAY override ogImageField() to specify the OG image field (default: 'og_image')
+ * 9. Model MAY override ogImageFallbackField() to specify a fallback image field (default: 'image')
  *
  * OG Tags returned by ogTags():
  * - title: The OG title (from meta_title, name, or title field)
@@ -84,6 +86,15 @@ trait HasUrl
     }
 
     /**
+     * Get the field name that contains the slug for URL generation
+     * Override this in your model if using a different field name
+     */
+    public function slugField(): string
+    {
+        return 'slug';
+    }
+
+    /**
      * Get the web URL path for this model
      * Override this in your model to customize the URL path
      * Defaults to the model's slug if not overridden
@@ -117,19 +128,20 @@ trait HasUrl
         // Update URL when model is updated
         static::updated(function ($model) {
             $activeField = $model->activeUrlField();
-            
+            $slugField = $model->slugField();
+
             // Check if URL relationship is loaded to avoid lazy loading issues
             if ($model->relationLoaded('url') && $model->url) {
                 // Update URL status based on model's active status
                 if ($model->wasChanged($activeField)) {
                     $model->updateUrlStatus();
                 }
-                
+
                 // Update slug if changed
-                if (method_exists($model, 'getSlugAttribute') && $model->wasChanged('slug')) {
+                if ($model->wasChanged($slugField)) {
                     $model->updateUrlSlug();
                 }
-                
+
                 // Touch last modified
                 $model->url->touchLastModified();
             } elseif ($model->shouldHaveUrl()) {
@@ -270,14 +282,25 @@ trait HasUrl
         $oldPath = $this->url->slug;
 
         if ($newPath !== $oldPath) {
-            // Create redirect from old to new
-            Url::createRedirect($oldPath, $newPath);
-            
-            // Update current URL
+            // Check for circular redirect chains before creating redirect
+            $chain = Url::detectRedirectChain($oldPath, $newPath);
+
+            if ($chain) {
+                throw new \RuntimeException(
+                    'Cannot update slug: This would create a circular redirect chain: ' .
+                    implode(' → ', $chain)
+                );
+            }
+
+            // IMPORTANT: Update current URL FIRST, then create redirect
+            // This way createRedirect won't find the active URL and convert it to a redirect
             $this->url->update([
                 'slug' => $newPath,
                 'last_modified_at' => now(),
             ]);
+
+            // Now create a NEW redirect entry from old path to new path
+            Url::createRedirect($oldPath, $newPath);
         }
     }
 

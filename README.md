@@ -6,12 +6,13 @@ A comprehensive Laravel package for managing URLs, redirects, and sitemaps with 
 
 - 🔗 **Dynamic URL Management** - Manage all your application URLs from a central location
 - 🔄 **301/302 Redirects** - Create and manage URL redirects with configurable status codes
+- 🔄 **Automatic Redirect Creation** - Update slugs safely with automatic old→new redirects
 - 🗺️ **Automatic Sitemap Generation** - Generate XML sitemaps with support for large sites
 - 📊 **Visit Tracking** - Track URL visits with country detection, device info, and mobile app support
-- 🎨 **Filament Integration** - Full-featured admin panel for URL management
+- 🎨 **Filament Integration** - Full-featured admin panel with UrlInput form component
 - 🏷️ **SEO Metadata** - Manage meta tags and Open Graph data
 - 🚀 **Performance Optimized** - Efficient database queries with proper indexing
-- 🔒 **Redirect Loop Protection** - Automatic detection and prevention of circular redirects
+- 🔒 **Redirect Loop Protection** - Automatic detection and prevention of circular redirects (A→B→A, A→B→C→A)
 
 ## Requirements
 
@@ -188,14 +189,34 @@ class Product extends Model
 }
 ```
 
-### Step 6: Register Routes (Optional)
+### Step 6: Register Redirect Middleware
 
-If you want to use the package's URL handling, add this to your `routes/web.php`:
+To enable automatic redirect handling when slugs are updated, add the middleware to your `bootstrap/app.php`:
 
 ```php
-// Add at the END of your routes file (must be last)
-Route::fallback([\RayzenAI\UrlManager\Http\Controllers\UrlController::class, 'handle']);
+use RayzenAI\UrlManager\Http\Middleware\HandleUrlRedirects;
+
+return Application::configure(basePath: dirname(__DIR__))
+    ->withMiddleware(function (Middleware $middleware): void {
+        // Add redirect handler EARLY, before route model binding
+        // This is critical so old URLs redirect before hitting 404
+        $middleware->web(prepend: [
+            HandleUrlRedirects::class,
+        ]);
+
+        // ... rest of your middleware configuration
+    })
+    // ... rest of configuration
 ```
+
+**Why prepend?** The middleware must run BEFORE route model binding. If you have a route like `/leader/{leader:slug}` and someone visits `/leader/old-slug`, the middleware catches it and redirects to `/leader/new-slug` before Laravel tries (and fails) to find a model with `slug='old-slug'`.
+
+**What it does:**
+- ✅ Checks if the current URL path is a redirect in the database
+- ✅ Performs 301/302 redirects automatically
+- ✅ Preserves query strings (`?page=2`)
+- ✅ Only checks GET requests (no overhead on POST/PUT/DELETE)
+- ✅ Prevents 404 errors for updated slugs
 
 ## Usage
 
@@ -977,16 +998,54 @@ The package provides two dashboard widgets:
 1. **URL Stats Overview** - Displays total URLs, redirects, and visit statistics
 2. **Top URLs Table** - Shows the 10 most visited URLs with their metrics
 
+### Filament Form Components
+
+#### UrlInput Component
+
+The package provides a `UrlInput` form component for managing slugs in Filament forms:
+
+```php
+use RayzenAI\UrlManager\Filament\Forms\Components\UrlInput;
+
+UrlInput::make('slug')
+    ->sourceField('name') // Auto-generate from name field
+    ->forModel(Product::class) // For proper validation
+```
+
+**Allowing Slug Updates:**
+
+By default, slugs are disabled when editing records to prevent breaking existing URLs. To allow updates (with automatic redirect creation):
+
+```php
+UrlInput::make('slug')
+    ->allowUpdatingSlug() // Enables editing on existing records
+```
+
+**How it works:**
+- ✅ When you update a slug, the old URL is automatically converted to a redirect
+- ✅ Circular redirect chains are detected and prevented (A→B→A)
+- ✅ Throws exception if circular chain would be created
+- ✅ Works seamlessly with the `HasUrl` trait
+
+**Example:**
+1. Leader has slug `kp-oli` with URL `/leader/kp-oli`
+2. Admin updates slug to `kp-sharma-oli` in Filament
+3. Database now has:
+   - Active URL: `/leader/kp-sharma-oli` (points to leader)
+   - Redirect: `/leader/kp-oli` → `/leader/kp-sharma-oli`
+4. Users visiting old URL are automatically redirected
+
 ## Best Practices
 
 1. **Always include an active field** (`is_active` or `active`) in models using HasUrl trait
-2. **Implement `webUrlPath()` method** to define URL structure
-3. **Override `activeUrlField()` method** if using a field name other than `is_active`
-4. **Use meaningful slugs** for SEO optimization
-5. **Set up redirects** when changing URL structures
-6. **Generate sitemaps regularly** (via cron job)
-7. **Monitor redirect chains** to avoid deep nesting
-8. **Use appropriate HTTP status codes** (301 for permanent, 302 for temporary)
+2. **Include a slug field** in models using HasUrl trait (override via `slugField()` if using different name)
+3. **Implement `webUrlPath()` method** to define URL structure
+4. **Override `activeUrlField()` method** if using a field name other than `is_active`
+5. **Use meaningful slugs** for SEO optimization
+6. **Allow slug updates safely** - Use `UrlInput::make('slug')->allowUpdatingSlug()` for automatic redirect creation
+7. **Generate sitemaps regularly** (via cron job)
+8. **Circular redirects are prevented automatically** - The package detects and blocks A→B→A or A→B→C→A chains
+9. **Use appropriate HTTP status codes** (301 for permanent, 302 for temporary)
 
 ## Testing
 
@@ -1037,9 +1096,10 @@ Check that:
 ### Redirects not working
 
 Verify:
-- The fallback route is registered last in `routes/web.php`
-- No other routes are conflicting
-- Redirect depth limit hasn't been exceeded
+- The `HandleUrlRedirects` middleware is registered with `prepend` (not `append`) in `bootstrap/app.php`
+- Middleware runs BEFORE route model binding
+- Redirect depth limit hasn't been exceeded (check `url-manager.max_redirect_depth` config)
+- Check for circular redirect chains in the database
 
 ## Contributing
 

@@ -146,19 +146,62 @@ class Url extends Model
     }
 
     /**
+     * Check if creating a redirect would cause a circular chain
+     * Returns the chain as an array if circular, null if safe
+     */
+    public static function detectRedirectChain(string $fromSlug, string $toSlug): ?array
+    {
+        $fromSlug = ltrim($fromSlug, '/');
+        $toSlug = ltrim($toSlug, '/');
+
+        $visited = [$fromSlug];
+        $current = $toSlug;
+        $maxDepth = config('url-manager.max_redirect_depth', 5);
+
+        for ($i = 0; $i < $maxDepth; $i++) {
+            // Check if we've completed the circle back to start
+            if ($current === $fromSlug) {
+                $visited[] = $current;
+                return $visited; // Circular chain detected
+            }
+
+            // Check if we've visited this slug before (indirect circle)
+            if (in_array($current, $visited)) {
+                $visited[] = $current;
+                return $visited; // Circular chain detected
+            }
+
+            // Look up the current slug
+            $url = self::where('slug', $current)
+                ->where('status', self::STATUS_REDIRECT)
+                ->first();
+
+            if (!$url || !$url->redirect_to) {
+                // End of chain, no circle
+                return null;
+            }
+
+            $visited[] = $current;
+            $current = ltrim($url->redirect_to, '/');
+        }
+
+        return null; // No circle detected within max depth
+    }
+
+    /**
      * Create a redirect from old slug to new slug
      */
     public static function createRedirect(string $oldSlug, string $newSlug, ?int $code = null): self
     {
         $code = $code ?? config('url-manager.default_redirect_code', 301);
-        
+
         // Normalize both slugs by removing leading slashes
         $oldSlug = ltrim($oldSlug, '/');
         $newSlug = ltrim($newSlug, '/');
-        
+
         // Check if a URL with this slug already exists
         $existingUrl = self::where('slug', $oldSlug)->first();
-        
+
         if ($existingUrl) {
             // Update existing URL to be a redirect
             $existingUrl->update([
@@ -169,7 +212,7 @@ class Url extends Model
             ]);
             return $existingUrl;
         }
-        
+
         // Create new redirect
         return self::create([
             'slug' => $oldSlug,
