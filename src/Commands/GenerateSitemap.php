@@ -26,14 +26,12 @@ class GenerateSitemap extends Command
 
         // Get all active URLs
         $totalUrls = Url::active()->count();
+        $customRouteCount = count(config('url-manager.sitemap.custom_routes', []));
 
-        if ($totalUrls === 0) {
-            $this->warn('No active URLs found.');
+        $this->info("Found {$totalUrls} active URLs and {$customRouteCount} custom routes");
 
-            return 0;
-        }
-
-        $this->info("Found {$totalUrls} active URLs");
+        // The homepage entry + any custom_routes are always emitted by generateXml(),
+        // so a sitemap with zero DB rows is still valid. Proceed unconditionally.
 
         // Determine if we need multiple sitemap files
         if ($totalUrls > $maxPerFile) {
