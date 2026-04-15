@@ -21,7 +21,7 @@ return new class extends Migration
             $table->string('device', 20)->nullable(); // Mobile, Desktop, Tablet
             $table->foreignId('user_id')->nullable()->constrained('users')->onDelete('set null');
             $table->string('referer')->nullable();
-            $table->jsonb('meta')->nullable(); // Additional metadata
+            $table->json('meta')->nullable(); // Additional metadata
             $table->timestamp('created_at')->useCurrent();
             
             // Indexes for performance

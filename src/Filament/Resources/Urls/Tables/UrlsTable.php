@@ -84,7 +84,7 @@ class UrlsTable
                     ->options(Url::getStatuses())
                     ->placeholder('All Statuses'),
             ])
-            ->actions([
+            ->recordActions([
                 EditAction::make(),
                 Action::make('visit')
                     ->label('Visit')
@@ -93,7 +93,7 @@ class UrlsTable
                     ->openUrlInNewTab()
                     ->color('gray'),
             ])
-            ->bulkActions([
+            ->toolbarActions([
                 BulkActionGroup::make([
                     DeleteBulkAction::make(),
                     BulkAction::make('activate')

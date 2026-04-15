@@ -7,7 +7,6 @@ use Filament\Actions\ActionGroup;
 use Filament\Forms;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
-use Filament\Forms\Form;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Schema;
 use Filament\Pages\Page;
@@ -51,10 +50,10 @@ class GoogleSearchConsoleSettings extends Page implements HasForms
         ]);
     }
     
-    public function form(Schema $form): Schema
+    public function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
+        return $schema
+            ->components([
                 Section::make('Actions')
                     ->schema([
                         Actions::make([

@@ -23,7 +23,7 @@ class ListUrls extends ListRecords
                 ->icon(Heroicon::OutlinedArrowsRightLeft)
                 ->modalHeading('Create 301 Redirect')
                 ->modalDescription('Create a permanent redirect from one URL to another')
-                ->form([
+                ->schema([
                     \Filament\Forms\Components\TextInput::make('from')
                         ->label('From URL')
                         ->placeholder('old-page')

@@ -21,7 +21,7 @@ return new class extends Migration
             $table->string('status')->default('active')->index();
             $table->string('redirect_to')->nullable();
             $table->integer('redirect_code')->default(301);
-            $table->jsonb('meta')->nullable();
+            $table->json('meta')->nullable();
             $table->unsignedBigInteger('visits')->default(0);
             $table->timestamp('last_visited_at')->nullable();
             $table->timestamp('last_modified_at')->nullable();
