@@ -208,15 +208,18 @@ trait HasUrl
     }
 
     /**
-     * Check if model should have a URL
+     * Check if model should have a URL.
+     *
+     * Override this in your model when the "active" state is computed from an
+     * enum, accessor, or several columns rather than a single boolean field.
      */
-    protected function shouldHaveUrl(): bool
+    public function shouldHaveUrl(): bool
     {
         $activeField = $this->activeUrlField();
-        
+
         // Check if model has the active field
         if (property_exists($this, 'fillable') && in_array($activeField, $this->fillable)) {
-            return $this->{$activeField} ?? false;
+            return (bool) ($this->{$activeField} ?? false);
         }
 
         return true;
