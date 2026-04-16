@@ -206,6 +206,33 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | JSON-LD Structured Data
+    |--------------------------------------------------------------------------
+    |
+    | Site-level schema.org data used by JsonLd::defaults().
+    | Models provide their own schemas via the jsonLd() method on HasUrl.
+    |
+    */
+    'json_ld' => [
+        'organization' => [
+            // 'name' => env('APP_NAME', 'My Site'),
+            // 'url' => env('APP_URL', 'https://example.com'),
+            // 'logo' => env('APP_URL', 'https://example.com').'/favicon.svg',
+            // 'sameAs' => [
+            //     'https://facebook.com/mysite',
+            //     'https://twitter.com/mysite',
+            // ],
+        ],
+
+        'website' => [
+            // 'name' => env('APP_NAME', 'My Site'),
+            // 'url' => env('APP_URL', 'https://example.com'),
+            // 'search_url' => env('APP_URL', 'https://example.com').'/search?q={search_term_string}',
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Filament Resource
     |--------------------------------------------------------------------------
     |

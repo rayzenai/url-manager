@@ -4,6 +4,7 @@ namespace RayzenAI\UrlManager\Traits;
 
 use Illuminate\Database\Eloquent\Relations\MorphOne;
 use RayzenAI\UrlManager\Models\Url;
+use RayzenAI\UrlManager\Support\Schema;
 
 /**
  * HasUrl Trait
@@ -422,6 +423,44 @@ trait HasUrl
             'og_url' => $ogTags['url'] ?? null,
             'og_site_name' => $ogTags['site_name'] ?? null,
             'canonical_url' => $ogTags['url'] ?? null,
+        ];
+    }
+
+    /**
+     * Get the schema.org @type for this model.
+     * Override in your model to use a specific type (e.g. 'EducationalOrganization').
+     */
+    public function jsonLdType(): string
+    {
+        return 'WebPage';
+    }
+
+    /**
+     * Get JSON-LD structured data for this model.
+     * Override in your model to customize the schema.
+     *
+     * @return array<string, mixed>
+     */
+    public function jsonLd(): array
+    {
+        return Schema::type($this->jsonLdType(), array_filter([
+            'name' => $this->name ?? $this->title ?? null,
+            'url' => $this->webUrl(),
+            'description' => $this->description ?? null,
+            'image' => $this->getOgImageUrl(),
+        ]));
+    }
+
+    /**
+     * Get breadcrumb items for this model.
+     * Override in your model to define the breadcrumb trail.
+     *
+     * @return array{name: string, url: string}[]
+     */
+    public function breadcrumbs(): array
+    {
+        return [
+            ['name' => 'Home', 'url' => url('/')],
         ];
     }
 }
