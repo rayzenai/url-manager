@@ -19,7 +19,7 @@ A comprehensive Laravel package for managing URLs, redirects, sitemaps, and stru
 - Laravel 13+
 - Filament 5+
 - Stevebauman/Location 7.0+ with MaxMind database (for visitor country detection)
-- kirantimsina/file-manager (optional, for media SEO / image sitemaps)
+- rayzenai/file-manager (optional, for media SEO / image sitemaps)
 
 ## Installation
 
