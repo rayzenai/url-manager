@@ -1,106 +1,47 @@
 # RayzenAI URL Manager
 
-A comprehensive Laravel package for managing URLs, redirects, and sitemaps with Filament admin panel integration.
+A comprehensive Laravel package for managing URLs, redirects, sitemaps, and structured data (JSON-LD) with Filament admin panel integration.
 
 ## Features
 
-- 🔗 **Dynamic URL Management** - Manage all your application URLs from a central location
-- 🔄 **301/302 Redirects** - Create and manage URL redirects with configurable status codes
-- 🔄 **Automatic Redirect Creation** - Update slugs safely with automatic old→new redirects
-- 🗺️ **Automatic Sitemap Generation** - Generate XML sitemaps with support for large sites
-- 📊 **Visit Tracking** - Track URL visits with country detection, device info, and mobile app support
-- 🎨 **Filament Integration** - Full-featured admin panel with UrlInput form component
-- 🏷️ **SEO Metadata** - Manage meta tags and Open Graph data
-- 🚀 **Performance Optimized** - Efficient database queries with proper indexing
-- 🔒 **Redirect Loop Protection** - Automatic detection and prevention of circular redirects (A→B→A, A→B→C→A)
+- **Dynamic URL Management** — Manage all application URLs from a central location
+- **301/302 Redirects** — Create and manage redirects with circular-chain protection
+- **Automatic Sitemap Generation** — XML sitemaps with multi-file support for large sites
+- **JSON-LD Structured Data** — Schema.org builders for rich search results (Product, Event, Article, FAQ, and more)
+- **Visit Tracking** — Track URL visits with country detection, device info, and referrer capture
+- **Filament Integration** — Full admin panel with UrlInput component, analytics widgets, and GSC settings
+- **SEO Metadata** — Open Graph tags, canonical URLs, and structured metadata per model
+- **Redirect Loop Protection** — Automatic detection and prevention of circular redirects
 
 ## Requirements
 
-- PHP 8.2+
-- Laravel 11.0+ or 12.0+
-- Filament 4.0+
+- PHP 8.4+
+- Laravel 13+
+- Filament 5+
 - Stevebauman/Location 7.0+ with MaxMind database (for visitor country detection)
-- kirantimsina/file-manager (optional, for media SEO functionality)
+- kirantimsina/file-manager (optional, for media SEO / image sitemaps)
 
 ## Installation
 
-### Step 1: Install via Composer
+### 1. Install via Composer
 
 ```bash
 composer require rayzenai/url-manager
 ```
 
-### Optional: Install File Manager for Enhanced SEO
-
-For complete media SEO functionality, install the companion file-manager package:
-
-```bash
-composer require kirantimsina/file-manager
-```
-
-This package provides:
-- Media metadata tracking with SEO titles
-- Image optimization and compression
-- Enhanced file upload components for Filament
-
-### Step 2: Publish Configuration
+### 2. Publish and Run Migrations
 
 ```bash
 php artisan vendor:publish --tag=url-manager-config
-```
-
-### Step 3: Configure Location Service (Required for visitor tracking)
-
-The URL Manager uses the Stevebauman/Location package to detect visitor countries from IP addresses. You need to set up MaxMind's GeoIP database:
-
-#### Option A: Use Local Database (Recommended)
-
-1. Download the free GeoLite2 City database from [MaxMind](https://dev.maxmind.com/geoip/geoip2/geolite2/)
-2. Create a free account and download `GeoLite2-City.mmdb`
-3. Place the file in your Laravel project: `database/maxmind/GeoLite2-City.mmdb`
-4. Publish and configure the Location package:
-
-```bash
-php artisan vendor:publish --provider="Stevebauman\Location\LocationServiceProvider"
-```
-
-5. Update `config/location.php`:
-
-```php
-'driver' => Stevebauman\Location\Drivers\MaxMind::class,
-
-'maxmind' => [
-    'local' => [
-        'type' => 'city', // or 'country' for smaller file
-        'path' => database_path('maxmind/GeoLite2-City.mmdb'),
-    ],
-],
-```
-
-#### Option B: Use Web Service
-
-Configure MaxMind web service in your `.env`:
-
-```env
-MAXMIND_USER_ID=your_user_id
-MAXMIND_LICENSE_KEY=your_license_key
-```
-
-### Step 4: Run Migrations
-
-```bash
 php artisan vendor:publish --tag=url-manager-migrations
 php artisan migrate
 ```
 
-This will create the following tables:
-- `urls` - For managing URLs and redirects
-- `url_visits` - For tracking visitor analytics
-- `google_search_console_settings` - For storing Google Search Console credentials securely
+This creates three tables: `urls`, `url_visits`, and `google_search_console_settings`.
 
-### Step 5: Register with Filament
+### 3. Register with Filament
 
-Add the plugin to your Filament panel configuration (typically in `app/Providers/Filament/AdminPanelProvider.php`):
+Add the plugin to your panel provider:
 
 ```php
 use RayzenAI\UrlManager\UrlManagerPlugin;
@@ -108,20 +49,15 @@ use RayzenAI\UrlManager\UrlManagerPlugin;
 public function panel(Panel $panel): Panel
 {
     return $panel
-        // ... other configuration
         ->plugin(UrlManagerPlugin::make());
 }
 ```
 
-### Step 5: Configure Your Models
+### 4. Configure Your Models
 
 Add the `HasUrl` trait to any model that needs URL management:
 
 ```php
-<?php
-
-namespace App\Models;
-
 use Illuminate\Database\Eloquent\Model;
 use RayzenAI\UrlManager\Traits\HasUrl;
 
@@ -129,989 +65,508 @@ class Product extends Model
 {
     use HasUrl;
 
-    protected $fillable = [
-        'name',
-        'slug',
-        'description',
-        'is_active', // Or 'active' - configurable via activeUrlField() method
-        // ... other fields
-    ];
-
-    /**
-     * Define the URL path for this model
-     * Required by HasUrl trait
-     */
     public function webUrlPath(): string
     {
         return 'products/' . $this->slug;
     }
 
-    /**
-     * Define the active field name (optional)
-     * Override this if your model uses 'active' instead of 'is_active'
-     */
+    // Optional: override if your active field isn't 'is_active'
     public function activeUrlField(): string
     {
-        return 'active'; // Default is 'is_active'
-    }
-
-    /**
-     * Enable automatic view count tracking
-     * Optional - implement this to track views on your model
-     */
-    public function getViewCountColumn(): ?string
-    {
-        return 'view_count'; // Return null if no view counting needed
-    }
-
-    /**
-     * Define Open Graph tags for SEO
-     * Optional but recommended
-     */
-    public function ogTags(): array
-    {
-        return [
-            'title' => $this->name,
-            'description' => $this->description,
-            'image' => $this->image_url,
-            'type' => 'product',
-        ];
-    }
-
-    /**
-     * Define sitemap change frequency
-     * Optional - defaults to 'weekly'
-     */
-    public function getSitemapChangefreq(): string
-    {
-        return 'daily';
+        return 'is_active';
     }
 }
 ```
 
-### Step 6: Register Redirect Middleware
+### 5. Register Redirect Middleware
 
-To enable automatic redirect handling when slugs are updated, add the middleware to your `bootstrap/app.php`:
+Add the middleware early in your stack (before route model binding) so old URLs redirect instead of 404-ing:
 
 ```php
 use RayzenAI\UrlManager\Http\Middleware\HandleUrlRedirects;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
-        // Add redirect handler EARLY, before route model binding
-        // This is critical so old URLs redirect before hitting 404
         $middleware->web(prepend: [
             HandleUrlRedirects::class,
         ]);
-
-        // ... rest of your middleware configuration
-    })
-    // ... rest of configuration
+    });
 ```
 
-**Why prepend?** The middleware must run BEFORE route model binding. If you have a route like `/leader/{leader:slug}` and someone visits `/leader/old-slug`, the middleware catches it and redirects to `/leader/new-slug` before Laravel tries (and fails) to find a model with `slug='old-slug'`.
-
-**What it does:**
-- ✅ Checks if the current URL path is a redirect in the database
-- ✅ Performs 301/302 redirects automatically
-- ✅ Preserves query strings (`?page=2`)
-- ✅ Only checks GET requests (no overhead on POST/PUT/DELETE)
-- ✅ Prevents 404 errors for updated slugs
-
-## Usage
-
-### Checking Your Configuration
-
-Before you start using URL Manager, check that all your models are properly configured:
+### 6. Generate URLs for Existing Models
 
 ```bash
-# Check all models using HasUrl trait
-php artisan url-manager:check
-
-# Check a specific model
-php artisan url-manager:check "App\Models\Product"
-```
-
-This command will verify:
-- ✅ `webUrlPath()` method is implemented
-- ✅ `is_active` (or custom active field) exists in database
-- ✅ `getViewCountColumn()` is configured correctly
-- ✅ SEO methods (`ogTags()`, `getSeoMetadata()`) are present
-- ✅ URL records have been generated
-- ⚠️  Warnings for optional but recommended features
-
-### Creating New Models with HasUrl
-
-Generate a new model with HasUrl trait and all required methods pre-configured:
-
-```bash
-# Create a basic model
-php artisan url-manager:make-model Product
-
-# Create model with migration
-php artisan url-manager:make-model Product --migration
-
-# Create model with migration, factory, and seeder
-php artisan url-manager:make-model Product --all
-```
-
-The generated model includes:
-- HasUrl trait already configured
-- `webUrlPath()` method with sensible defaults
-- `getViewCountColumn()` for automatic view tracking
-- `ogTags()` and `getSeoMetadata()` for SEO
-- Proper fillable fields and casts
-
-### Using the UrlManager Facade
-
-For common URL operations, use the `UrlManager` facade:
-
-```php
-use RayzenAI\UrlManager\Facades\UrlManager;
-
-// Generate URL for a model
-$product = Product::find(1);
-UrlManager::generateUrl($product);
-
-// Track a visit manually
-UrlManager::trackVisit($product, auth()->id());
-
-// Create a redirect
-UrlManager::createRedirect('old-url', 'new-url', 301);
-
-// Find URL by slug
-$url = UrlManager::findBySlug('products/my-product');
-
-// Get visit count
-$visits = UrlManager::getVisitCount($product);
-
-// Delete URL
-UrlManager::deleteUrl($product);
-```
-
-### Creating URLs for Existing Models
-
-Generate URLs for all models that use the HasUrl trait:
-
-```bash
+# All models with HasUrl
 php artisan urls:generate
-```
 
-Or for a specific model:
-
-```bash
+# Specific model
 php artisan urls:generate "App\Models\Product"
 ```
 
-#### Handling Large Datasets
+---
 
-For large datasets with thousands of records, you may need to increase PHP memory and execution limits:
+## JSON-LD Structured Data
 
-```bash
-# Increase PHP memory limit and execution time
-php -d memory_limit=2G -d max_execution_time=0 artisan urls:generate
+The package includes a `Schema` builder and `JsonLd` collector for generating schema.org structured data as `<script type="application/ld+json">` tags.
 
-# Or generate for specific models one at a time
-php artisan urls:generate "App\Models\Product"
-php artisan urls:generate "App\Models\Category"
-php artisan urls:generate "App\Models\Blog"
-```
+### Schema Builder
 
-### Creating Redirects
-
-#### Via Filament Admin
-
-1. Navigate to the URLs section in your Filament admin panel
-2. Click "Create Redirect"
-3. Enter the source and destination URLs
-4. Choose redirect type (301 or 302)
-
-#### Programmatically
+Static factory methods for common schema.org types:
 
 ```php
-use RayzenAI\UrlManager\Models\Url;
+use RayzenAI\UrlManager\Support\Schema;
 
-// Create a permanent redirect
-Url::createRedirect('old-page', 'new-page', 301);
+// Generic — any schema.org type
+Schema::type('LocalBusiness', ['name' => 'My Shop', 'url' => '...']);
 
-// Create a temporary redirect
-Url::createRedirect('summer-sale', 'products/sale', 302);
+// Organization / EducationalOrganization
+Schema::organization(['name' => 'Acme Corp', 'url' => '...', 'logo' => '...']);
+Schema::educationalOrganization(['name' => 'MIT', 'url' => '...']);
+
+// WebSite with SearchAction
+Schema::webSite([
+    'name' => 'My Site',
+    'url' => 'https://example.com',
+    'potentialAction' => Schema::searchAction('https://example.com/search?q={search_term_string}'),
+]);
+
+// BreadcrumbList
+Schema::breadcrumbList([
+    ['name' => 'Home', 'url' => 'https://example.com/'],
+    ['name' => 'Products', 'url' => 'https://example.com/products'],
+    ['name' => 'Widget', 'url' => 'https://example.com/products/widget'],
+]);
+
+// FAQPage
+Schema::faqPage([
+    ['question' => 'What is this?', 'answer' => 'A great product.'],
+    ['question' => 'How much?', 'answer' => '$9.99'],
+]);
 ```
 
-### Generating Sitemaps
-
-Generate a sitemap with all active URLs:
-
-```bash
-php artisan sitemap:generate
-```
-
-For large sites (>10,000 URLs), the package automatically creates multiple sitemap files with an index.
-
-#### Including Custom Static Routes
-
-You can include static routes in your sitemap that aren't tied to database models. This is useful for:
-- Static pages (About, Contact, Terms of Service)
-- Custom Livewire components
-- API documentation pages
-- Any route that should appear in your sitemap but doesn't use the HasUrl trait
-
-Configure custom routes in `config/url-manager.php`:
+#### E-commerce
 
 ```php
-'sitemap' => [
-    'custom_routes' => [
-        [
-            'path' => '/about',
-            'priority' => 0.7,
-            'changefreq' => 'monthly',
-            'lastmod' => null, // Optional: Carbon instance or date string
-        ],
-        [
-            'path' => '/contact',
-            'priority' => 0.6,
-            'changefreq' => 'yearly',
-        ],
-        [
-            'path' => '/blog',
-            'priority' => 0.8,
-            'changefreq' => 'daily',
-            'lastmod' => now(), // Can use Carbon instance
-        ],
-    ],
-],
+// Product with Offer
+Schema::product([
+    'name' => 'Running Shoes',
+    'image' => 'https://example.com/shoes.jpg',
+    'sku' => 'SHOE-001',
+    'brand' => ['@type' => 'Brand', 'name' => 'Acme'],
+    'offers' => Schema::offer([
+        'price' => 99.99,
+        'priceCurrency' => 'USD',
+        'availability' => 'https://schema.org/InStock',
+    ]),
+    'aggregateRating' => Schema::aggregateRating([
+        'ratingValue' => 4.5,
+        'reviewCount' => 120,
+    ]),
+]);
+
+// Product with price range
+Schema::product([
+    'name' => 'T-Shirt',
+    'offers' => Schema::aggregateOffer([
+        'lowPrice' => 9.99,
+        'highPrice' => 29.99,
+        'priceCurrency' => 'USD',
+        'offerCount' => 5,
+    ]),
+]);
+
+// Category / listing page
+Schema::collectionPage([
+    'name' => 'Electronics',
+    'url' => 'https://example.com/electronics',
+    'description' => 'Browse our electronics catalog',
+]);
 ```
 
-**Available Options:**
-- `path` (required): The route path (e.g., `/about`, `/contact`)
-- `priority` (optional): SEO priority from 0.0 to 1.0 (default: 0.5)
-- `changefreq` (optional): How often the page changes: `always`, `hourly`, `daily`, `weekly`, `monthly`, `yearly`, `never` (default: `weekly`)
-- `lastmod` (optional): Last modification date as Carbon instance or date string (default: current time)
-
-These routes will be automatically included when you run:
-```bash
-php artisan sitemap:generate
-```
-
-### Submitting Sitemaps to Search Engines
-
-Since Google deprecated the ping endpoint in June 2023 and Bing has also discontinued their ping service, API credentials are now required for automated sitemap submission.
-
-#### Setting up Google Search Console API
-
-**Prerequisites**:
-- A verified property in [Google Search Console](https://search.google.com/search-console)
-- A Google Cloud Project with billing enabled (API has free tier)
-
-##### Using Service Account Authentication
-
-1. **Create a Google Cloud Project**:
-   - Go to [Google Cloud Console](https://console.cloud.google.com)
-   - Create a new project or select an existing one
-   - Enable these APIs:
-     - "Google Search Console API" 
-     - "Search Console API" (if available)
-   - Note: The "Indexing API" is separate and not needed for sitemap submission
-
-2. **Create a Service Account**:
-   - Navigate to "IAM & Admin" > "Service Accounts"
-   - Click "Create Service Account"
-   - Give it a name like "sitemap-submitter"
-   - Click "Create and Continue"
-   - Skip the optional role assignment (click "Continue")
-   - Click "Done"
-   - Find your new service account in the list and click on it
-   - Go to the "Keys" tab
-   - Click "Add Key" > "Create New Key"
-   - Select "JSON" format
-   - Click "Create" to download the JSON credentials file
-   - **Keep this file secure** - it contains credentials for API access
-
-3. **Add Service Account to Search Console**:
-   - Go to [Google Search Console](https://search.google.com/search-console)
-   - Select your property
-   - Go to Settings > Users and permissions
-   - Click "Add user"
-   - Enter the service account email (found in the JSON file, looks like `service-account@project.iam.gserviceaccount.com`)
-   - Select "Owner" permission level
-   - Click "Add"
-
-4. **Configure in Admin Panel**:
-   - Navigate to the Google Search Console settings page in your Filament admin panel
-   - Toggle "Enable Google Search Console Integration" to ON
-   - Enter your site URL or domain property:
-     - **For URL-prefix property**: `https://www.yoursite.com` (must match exactly)
-     - **For Domain property**: `sc-domain:yoursite.com` (recommended - covers all subdomains and protocols)
-   - **Add your Service Account credentials**:
-     - Open your downloaded JSON file in a text editor
-     - Copy the entire JSON content
-     - Paste it into the "Service Account JSON" field
-     - The service account email will be automatically extracted
-   - Click "Save Settings"
-   - Use "Test Connection" to verify the setup is working
-   
-   **Why Database Storage?**
-   - Credentials are encrypted and stored securely in your database
-   - Survives deployments (no need to re-upload files)
-   - No file system dependencies
-   - Easier to manage in production environments
-
-#### Submitting Sitemaps
-
-Once configured, you can submit sitemaps in multiple ways:
-
-1. **Via Admin Panel**: 
-   - Go to URLs management page in Filament
-   - Click "Submit to Search Engines" button
-
-2. **Via Command Line**:
-   ```bash
-   php artisan sitemap:submit
-   ```
-
-3. **Programmatically**:
-   ```php
-   use RayzenAI\UrlManager\Services\GoogleSearchConsoleService;
-   
-   // Submit to Google only
-   $result = GoogleSearchConsoleService::submitGoogleSitemap();
-   
-   // Submit to all search engines (Google + Bing note)
-   $result = GoogleSearchConsoleService::submitToAllSearchEngines();
-   ```
-
-#### Troubleshooting Google Search Console
-
-**Service Account Issues**:
-- **"API not configured" error**: Ensure you've enabled the Google Search Console API in your Google Cloud Project
-- **"Site not verified" error**: Make sure the service account email is added as a user in Search Console with "Owner" permissions
-- **"Invalid credentials" error**: Check that the JSON file path is correct and the file is readable by the web server
-- **403 Forbidden errors**: 
-  - The service account may not have proper permissions. Verify it's added to Search Console with "Owner" role
-  - Check if you're using the correct property format. If you have a domain property in Search Console, use `sc-domain:yoursite.com` format
-  - Verify the exact property format in Search Console matches what you've configured
-- **Invalid JSON error**: Ensure you're copying the complete JSON content from the credentials file, including all brackets
-
-**General Issues**:
-- **"Invalid site URL" error**: The site URL must match exactly with how it's registered in Search Console (including www/non-www, https/http)
-- **No sitemaps found**: The site may not have any sitemaps submitted yet. Use "Submit Sitemap Now" button to submit
-- **Rate limiting**: Google Search Console API has quotas. Check your Google Cloud Console for usage limits
-- **Connection test passes but submission fails**: Check that sitemap.xml exists and is accessible at the expected URL
-
-#### Note on Bing
-
-Bing has also discontinued their ping endpoint. Sitemaps must be manually submitted through [Bing Webmaster Tools](https://www.bing.com/webmasters).
-
-### Accessing URLs in Your Application
+#### Blog / Articles
 
 ```php
-// Get the full URL for a model
-$product = Product::find(1);
-echo $product->webUrl(); // https://yoursite.com/products/my-product
+Schema::blogPosting([
+    'headline' => '10 Tips for Better Code',
+    'image' => 'https://example.com/blog/tips.jpg',
+    'datePublished' => '2026-04-01',
+    'dateModified' => '2026-04-10',
+    'author' => Schema::person(['name' => 'Jane Doe', 'url' => 'https://example.com/jane']),
+    'publisher' => Schema::organization(['name' => 'Tech Blog']),
+]);
 
-// Get the admin URL
-echo $product->adminUrl(); // /admin/products/1/edit
-
-// Check if a model's URL is active
-if ($product->url && $product->url->status === 'active') {
-    // URL is active
-}
+// Generic article
+Schema::article([
+    'name' => 'My Article',
+    'datePublished' => '2026-01-01',
+    'author' => Schema::person(['name' => 'John']),
+]);
 ```
 
-### Visit Tracking
-
-The package automatically tracks URL visits, but to track view counts on your models, you need to implement the `getViewCountColumn()` method:
+#### Events and Contests
 
 ```php
-class Product extends Model
+// Physical event
+Schema::event([
+    'name' => 'Laravel Meetup',
+    'startDate' => '2026-05-15T18:00:00+05:45',
+    'endDate' => '2026-05-15T21:00:00+05:45',
+    'eventAttendanceMode' => 'https://schema.org/OfflineEventAttendanceMode',
+    'eventStatus' => 'https://schema.org/EventScheduled',
+    'location' => Schema::place([
+        'name' => 'Tech Hub',
+        'address' => Schema::postalAddress([
+            'addressLocality' => 'Kathmandu',
+            'addressCountry' => 'NP',
+        ]),
+    ]),
+    'organizer' => Schema::organization(['name' => 'Laravel Nepal']),
+    'offers' => Schema::offer([
+        'price' => 0,
+        'priceCurrency' => 'NPR',
+        'availability' => 'https://schema.org/InStock',
+    ]),
+]);
+
+// Online event / contest
+Schema::event([
+    'name' => 'Coding Contest 2026',
+    'startDate' => '2026-06-01T10:00:00Z',
+    'eventAttendanceMode' => 'https://schema.org/OnlineEventAttendanceMode',
+    'location' => Schema::virtualLocation('https://example.com/contest/live'),
+]);
+```
+
+#### Helper Types
+
+```php
+Schema::person(['name' => 'John Doe', 'url' => '...']);
+Schema::postalAddress(['addressLocality' => 'Kathmandu', 'addressCountry' => 'NP']);
+Schema::place(['name' => 'Convention Center', 'address' => Schema::postalAddress([...])]);
+Schema::virtualLocation('https://example.com/live');
+Schema::aggregateRating(['ratingValue' => 4.5, 'reviewCount' => 120]);
+Schema::searchAction('https://example.com/search?q={search_term_string}');
+```
+
+### JsonLd Collector
+
+Accumulate schemas during a request and render them as script tags:
+
+```php
+use RayzenAI\UrlManager\Support\JsonLd;
+
+// Add schemas
+JsonLd::add(Schema::organization(['name' => 'Acme']));
+JsonLd::add($product->jsonLd());
+JsonLd::breadcrumbs($product->breadcrumbs());
+
+// Add multiple at once
+JsonLd::addMany(
+    Schema::organization(['name' => 'Acme']),
+    Schema::webSite(['name' => 'Acme Site']),
+);
+
+// Load site-level defaults from config (Organization + WebSite)
+JsonLd::defaults();
+
+// Render as HTML script tags (use in Blade)
+{!! JsonLd::render() !!}
+
+// Or get raw JSON (for APIs / headless)
+$json = JsonLd::toJson();
+
+// Reset between requests (call after rendering)
+JsonLd::reset();
+```
+
+### Model Integration
+
+The `HasUrl` trait provides three methods models can override for structured data:
+
+```php
+class College extends Model
 {
     use HasUrl;
 
-    protected $fillable = [
-        'name',
-        'slug',
-        'view_count', // Add your view count column
-        // ...
-    ];
-
-    /**
-     * Enable automatic view count tracking
-     * When visitors access this model's URL, the view_count column will be incremented
-     */
-    public function getViewCountColumn(): ?string
+    // Schema.org @type
+    public function jsonLdType(): string
     {
-        return 'view_count'; // Return null if you don't want view counting
+        return 'EducationalOrganization';
+    }
+
+    // Full JSON-LD schema
+    public function jsonLd(): array
+    {
+        return Schema::educationalOrganization([
+            'name' => $this->name,
+            'url' => url($this->webUrlPath()),
+            'address' => Schema::postalAddress([
+                'addressLocality' => $this->location,
+                'addressCountry' => 'NP',
+            ]),
+        ]);
+    }
+
+    // Breadcrumb trail
+    public function breadcrumbs(): array
+    {
+        return [
+            ['name' => 'Home', 'url' => url('/')],
+            ['name' => 'Colleges', 'url' => url('/colleges')],
+            ['name' => $this->name, 'url' => url($this->webUrlPath())],
+        ];
     }
 }
 ```
 
-**Important**: Make sure your database migration includes the view count column:
+Then in your controller:
 
 ```php
-Schema::create('products', function (Blueprint $table) {
-    $table->id();
-    $table->string('name');
-    $table->string('slug')->unique();
-    $table->unsignedBigInteger('view_count')->default(0); // Add this
-    $table->boolean('is_active')->default(true);
-    $table->timestamps();
-});
+JsonLd::add($college->jsonLd());
+JsonLd::breadcrumbs($college->breadcrumbs());
 ```
 
-The package provides two ways to track visits:
+### Configuration
 
-#### Method 1: Using Middleware (Recommended for Livewire & API Routes)
-
-Register the middleware in your application:
-
-**For Laravel 11** - Add to `bootstrap/app.php`:
-```php
-->withMiddleware(function (Middleware $middleware) {
-    $middleware->alias([
-        'track-url-visits' => \RayzenAI\UrlManager\Http\Middleware\TrackUrlVisits::class,
-    ]);
-})
-```
-
-**For Laravel 10 and below** - Add to `app/Http/Kernel.php`:
-```php
-protected $middlewareAliases = [
-    // ...
-    'track-url-visits' => \RayzenAI\UrlManager\Http\Middleware\TrackUrlVisits::class,
-];
-```
-
-Then apply the middleware to your routes:
+Add site-level defaults to `config/url-manager.php`:
 
 ```php
-// For Livewire components
-Route::get('/property/{slug}', PropertyDetails::class)
-    ->middleware('track-url-visits')
-    ->name('property');
-
-// For API routes
-Route::middleware(['track-url-visits'])->group(function () {
-    Route::get('/api/products/{slug}', [ProductController::class, 'show']);
-    Route::get('/api/categories/{slug}', [CategoryController::class, 'show']);
-});
-
-// Works with any route type - controllers, closures, Livewire, Inertia, etc.
-Route::middleware(['auth', 'track-url-visits'])->group(function () {
-    Route::get('/dashboard', Dashboard::class);
-    Route::get('/profile', [ProfileController::class, 'show']);
-});
-```
-
-The middleware automatically:
-- Matches the request path against URLs in the database
-- Records visits asynchronously via queued jobs
-- Captures IP address, user agent, referrer, and authenticated user ID
-- **Increments the model's view_count** if `getViewCountColumn()` is implemented
-- Works transparently without modifying your controllers or components
-
-#### Method 2: Using Fallback Route
-
-If you use the package's fallback route controller:
-
-```php
-// Add at the END of your routes/web.php
-Route::fallback([\RayzenAI\UrlManager\Http\Controllers\UrlController::class, 'handle']);
-```
-
-Visits are automatically tracked for any URL managed by the package.
-
-#### Accessing Visit Data
-
-```php
-// URL-level visit tracking (always available)
-$url = $product->url;
-echo $url->visits; // Total visits on the URL record
-echo $url->last_visited_at; // Last visit timestamp
-
-// Model-level view tracking (if getViewCountColumn() is implemented)
-echo $product->view_count; // Total views on the model itself
-```
-
-**Note**: The difference between URL visits and model view counts:
-- **URL visits**: Tracked in the `urls` table and `url_visits` table (always enabled)
-- **Model view counts**: Tracked on your model's `view_count` column (requires `getViewCountColumn()` implementation)
-
-### Visitor Analytics Features
-
-The URL Manager provides comprehensive visitor tracking with the following features:
-
-#### Country Detection
-- Automatically detects visitor's country from IP address using MaxMind GeoIP database
-- Displays country flags (🇺🇸 🇬🇧 🇳🇵 🇮🇳) in the admin panel
-- Filter visits by country in Filament resource
-
-#### Mobile App Detection
-The package intelligently detects mobile app traffic through:
-- **API Source Parameters**: Recognizes `source=android` or `source=ios` parameters
-- **User-Agent Analysis**: Detects Flutter, React Native, Expo, and other mobile frameworks
-- **HTTP Client Detection**: Identifies OkHttp (Android) and Alamofire (iOS) clients
-
-#### Populate Existing Data
-If you have existing visitor data without country codes, run:
-
-```bash
-php artisan url-manager:populate-country-codes
-```
-
-This command will:
-- Process all URL visits without country codes
-- Resolve countries from IP addresses
-- Update records with detected country codes
-
-#### Visitor Information Tracked
-- **IP Address** with country flag
-- **Country Code** with flag emoji display
-- **Browser/App** type and version
-- **Device Type** (Desktop, Mobile, Tablet)
-- **Referrer URL**
-- **User** (if authenticated)
-- **Visit Timestamp**
-- **Metadata** (additional custom data)
-
-### Testing Referrer Tracking
-
-The package includes a built-in test page to verify that referrer tracking is working correctly. This is especially useful when setting up the package or debugging referrer capture issues.
-
-**Access the test page** (only available in non-production environments):
-```
-https://yourdomain.com/_url-manager/test
-```
-
-The test page provides:
-- A visual interface to add and visit entity URLs
-- Automatic referrer capture via JavaScript (works even when browsers block HTTP Referer headers)
-- Real-time verification of referrer tracking
-- Instructions for checking captured referrers in Filament admin panel
-
-**How it works:**
-1. Visit the test page at `/_url-manager/test`
-2. Add your entity slugs (e.g., `entities/my-product`, `blog/my-post`)
-3. Click on the links to visit those pages
-4. Check Filament admin panel → URL Visits → Toggle "Referrer" column
-5. You should see the test page URL as the referrer
-
-The test page uses a multi-layer approach to ensure referrers are captured:
-- JavaScript-based capture (passes referrer as `?ref=` query parameter)
-- HTTP Referer header support
-- Multiple fallback sources (headers and server variables)
-
-**Note:** The test route is automatically disabled in production environments for security.
-
-## Configuration
-
-The configuration file `config/url-manager.php` allows you to customize:
-
-```php
-return [
-    // Database table name
-    'table_name' => 'urls',
-    
-    // URL types available in your application
-    'types' => [
-        'product' => 'Product',
-        'category' => 'Category',
-        'page' => 'Page',
-        // Add your custom types
-    ],
-    
-    // Maximum redirect chain depth (prevents infinite loops)
-    'max_redirect_depth' => 5,
-    
-    // Visit tracking
-    'track_visits' => true,
-    'visit_queue' => 'low', // Queue for visit tracking jobs
-    
-    // Sitemap configuration
-    'sitemap' => [
-        'enabled' => true,
-        'path' => public_path('sitemap.xml'),
-        'max_urls_per_file' => 10000,
-        'default_changefreq' => 'weekly',
-        'default_priority' => 0.5,
-        'priorities' => [
-            'product' => 0.8,
-            'category' => 0.9,
-            'page' => 0.6,
-        ],
-
-        // Custom static routes to include in sitemap
-        'custom_routes' => [
-            [
-                'path' => '/about',
-                'priority' => 0.7,
-                'changefreq' => 'monthly',
-                'lastmod' => null, // Optional: Carbon instance or date string
-            ],
-            [
-                'path' => '/contact',
-                'priority' => 0.6,
-                'changefreq' => 'yearly',
-            ],
-        ],
-
-        // Image sitemap configuration
-        'images' => [
-            'enabled' => true,
-            'max_images_per_file' => 5000,
-            'image_size' => 'large', // Use optimized size: 'thumb', 'medium', 'large', 'full', or null for original
+'json_ld' => [
+    'organization' => [
+        'name' => env('APP_NAME', 'My Site'),
+        'url' => env('APP_URL', 'https://example.com'),
+        'logo' => env('APP_URL', 'https://example.com') . '/favicon.svg',
+        'sameAs' => [
+            'https://facebook.com/mysite',
+            'https://twitter.com/mysite',
         ],
     ],
-    
-    // Filament admin panel
-    'filament' => [
-        'enabled' => true,
-        'navigation_group' => 'System',
-        'navigation_icon' => 'heroicon-o-link',
-        'navigation_sort' => 100,
+    'website' => [
+        'name' => env('APP_NAME', 'My Site'),
+        'url' => env('APP_URL', 'https://example.com'),
+        'search_url' => env('APP_URL', 'https://example.com') . '/search?q={search_term_string}',
     ],
-];
-```
-
-## Advanced Features
-
-### UrlManager Facade
-
-The `UrlManager` facade provides a convenient API for common URL operations:
-
-```php
-use RayzenAI\UrlManager\Facades\UrlManager;
-
-// Generate or update URL for a model
-$url = UrlManager::generateUrl($product);
-
-// Manually track a visit (normally handled automatically)
-UrlManager::trackVisit($product, auth()->id(), ['source' => 'mobile']);
-
-// Create redirects programmatically
-UrlManager::createRedirect('/old-path', '/new-path', 301);
-
-// Find URLs by slug
-$url = UrlManager::findBySlug('products/my-product');
-
-// Get all redirects
-$redirects = UrlManager::getRedirects();
-
-// Get visit count for a model
-$totalVisits = UrlManager::getVisitCount($product);
-
-// Delete URL for a model
-UrlManager::deleteUrl($product);
-```
-
-**When to use the facade:**
-- Creating redirects programmatically
-- Manual visit tracking (in addition to automatic tracking)
-- Quick URL lookups by slug
-- Debugging or admin tools
-
-**When NOT to use it:**
-- URL creation is automatic via HasUrl trait events
-- Visit tracking is automatic via middleware/fallback route
-- Use the facade only when you need programmatic control
-
-### Custom URL Types
-
-Register custom URL types in your configuration:
-
-```php
-'types' => [
-    'product' => 'Product',
-    'article' => 'Article',
-    'custom_type' => 'Custom Type',
 ],
 ```
 
-### SEO Metadata
+Call `JsonLd::defaults()` once per request (e.g. in a view composer or middleware) to emit the Organization and WebSite schemas automatically.
 
-Models can provide SEO metadata through the `getSeoMetadata()` method:
+---
+
+## Open Graph Tags
+
+Models using `HasUrl` get OG tag support via the `ogTags()` method:
 
 ```php
-public function getSeoMetadata(): array
+public function ogTags(): array
 {
     return [
-        'title' => $this->seo_title ?? $this->name,
-        'description' => $this->seo_description ?? $this->description,
-        'keywords' => $this->seo_keywords,
-        'og_image' => $this->featured_image,
-        'og_type' => 'article',
-        'twitter_card' => 'summary_large_image',
+        'title' => $this->name,
+        'description' => $this->description,
+        'image' => $this->getOgImageUrl(),
+        'type' => 'product',
+        'url' => $this->webUrl(),
+        'site_name' => config('app.name'),
     ];
 }
 ```
 
-### Event Handling
+The trait provides smart image fallback via `ogImageField()` (default: `og_image`) and `ogImageFallbackField()` (default: `image`).
 
-Listen for URL events in your application:
+---
 
-```php
-// In a service provider or event listener
-Event::listen('url-manager.url.visited', function ($url, $model) {
-    // Log visit, send analytics, etc.
-    Log::info("URL visited: {$url->slug}");
-});
-```
+## Sitemaps
 
-### Media SEO with File Manager
-
-If you have the `kirantimsina/file-manager` package installed, you can enhance your SEO by managing media metadata:
-
-#### Populate SEO Titles for Images
-
-Generate SEO-friendly titles for all your media files:
+### Generate Sitemaps
 
 ```bash
-# Generate SEO titles for all media
-php artisan file-manager:populate-seo-titles
+# Standard URL sitemap
+php artisan sitemap:generate
 
-# Generate for specific model only
-php artisan file-manager:populate-seo-titles --model=Product
-
-# Dry run to see what would be generated
-php artisan file-manager:populate-seo-titles --dry-run
-
-# Overwrite existing SEO titles
-php artisan file-manager:populate-seo-titles --overwrite
-```
-
-The command automatically generates SEO-friendly titles based on:
-- Parent model's name/title
-- Media field context (e.g., "Featured Image", "Gallery")
-- Clean filename processing
-- Removes special characters from beginning/end for cleaner SEO
-
-#### Image Sitemap Generation
-
-Generate a dedicated image sitemap for better image SEO:
-
-```bash
-# Generate image sitemap with optimized SEO titles
+# Image sitemap (requires kirantimsina/file-manager)
 php artisan sitemap:generate-images
 
-# Include specific models only
-php artisan sitemap:generate-images --model=Product --model=Blog
+# Video sitemap
+php artisan sitemap:generate-videos
 
-# Set custom maximum images per sitemap file
-php artisan sitemap:generate-images --max-urls=5000
+# All sitemaps + index
+php artisan sitemap:generate-all
 ```
 
-**Features:**
-- Uses pre-populated SEO titles from media_metadata table for optimal performance
-- Only includes images with meaningful SEO titles (excludes internal/system images)
-- Automatically creates index files for large image collections
-- Generates Google Image sitemap format with proper XML namespace
-- Includes image location, title, and caption metadata
-- Uses optimized image sizes instead of originals for better performance
+The homepage (`/`) is always included automatically. For sites with >10,000 URLs, multiple sitemap files are generated with an index.
 
-**Performance Optimization:**
-- Direct database queries avoid expensive polymorphic lookups
-- Chunked processing for handling millions of images
-- Only processes images from SEO-enabled models (configured in file-manager)
+### Custom Static Routes
 
-#### Image Size Configuration
-
-Configure the image size used in sitemaps in `config/url-manager.php`:
+Include static pages that don't have database URL records:
 
 ```php
+// config/url-manager.php
 'sitemap' => [
-    'images' => [
-        'enabled' => true,
-        'max_images_per_file' => 5000,
-        
-        // Configure which size to use for sitemap images
-        // Options: 'icon', 'thumb', 'medium', 'large', 'full', etc.
-        // Set to null to use original images
-        'image_size' => 'large', // Default: 720px height
+    'custom_routes' => [
+        ['path' => '/about', 'priority' => 0.7, 'changefreq' => 'monthly'],
+        ['path' => '/contact', 'priority' => 0.6, 'changefreq' => 'yearly'],
     ],
 ],
 ```
 
-The available sizes are defined in your `config/file-manager.php`:
+### Submit to Search Engines
+
+```bash
+php artisan sitemap:submit
+```
+
+Configure Google Search Console API credentials via the Filament admin panel (GSC Settings page). Requires a service account with owner permissions on your Search Console property.
+
+---
+
+## Redirects
+
+### Automatic (via HasUrl)
+
+When a model's slug changes, the old URL is automatically converted to a 301 redirect pointing to the new URL. Circular chains (A->B->A) are detected and blocked.
+
+### Manual
 
 ```php
-'image_sizes' => [
-    'icon' => 64,       // 64px height
-    'thumb' => 240,     // 240px height  
-    'medium' => 480,    // 480px height
-    'large' => 720,     // 720px height (recommended for sitemaps)
-    'full' => 1080,     // 1080px height
-],
+use RayzenAI\UrlManager\Models\Url;
+
+Url::createRedirect('old-page', 'new-page', 301);
+Url::createRedirect('summer-sale', 'products/sale', 302);
 ```
 
-#### SEO Title Configuration
+### Via Filament
 
-Control which models receive SEO titles in `config/file-manager.php`:
+Create redirects through the admin panel's URL management section.
+
+---
+
+## Visit Tracking
+
+### Via Middleware
 
 ```php
-'seo' => [
-    'enabled_models' => [
-        'App\Models\Product',
-        'App\Models\Category',
-        'App\Models\Blog',
-        // Models that should have SEO titles
-    ],
-    'excluded_models' => [
-        'App\Models\User',
-        'App\Models\Order',
-        // Models that should NOT have SEO titles
-    ],
-],
+Route::get('/products/{slug}', [ProductController::class, 'show'])
+    ->middleware('track-url-visits');
 ```
 
-#### Media Metadata in Sitemaps
+The middleware captures IP, user agent, referrer, country, device type, and authenticated user.
 
-When using file-manager, media files are automatically included in your sitemaps with proper SEO titles and metadata for better search engine indexing. The integration:
-- Respects model configuration (enabled/excluded models)
-- Uses cached SEO titles for fast generation
-- Supports large-scale image collections with automatic file splitting
+### Model View Counts
 
-### Multiple Sitemap Support
+Implement `getViewCountColumn()` on your model to auto-increment a view counter:
 
-For sites with more than 10,000 URLs, the package automatically generates multiple sitemap files:
-
-```
-sitemap.xml         (index file)
-sitemap-0.xml       (first 10,000 URLs)
-sitemap-1.xml       (next 10,000 URLs)
-...
+```php
+public function getViewCountColumn(): ?string
+{
+    return 'view_count';
+}
 ```
 
-## Filament Admin Panel
+### Visit Analytics
 
-The package includes a complete Filament resource with:
+The `url_visits` table tracks individual visits with:
+- IP address and country (via MaxMind GeoIP)
+- Browser, device type, mobile app detection
+- Referrer URL (cleaned of tracking params)
+- Authenticated user ID
 
-- **URL Listing** - Search, filter, and sort URLs
-- **Create/Edit Forms** - Manage URL details and metadata
-- **Redirect Creation** - Quick action to create 301/302 redirects
-- **Sitemap Generation** - Generate and view sitemaps
-- **Bulk Actions** - Activate/deactivate multiple URLs
-- **Visit Statistics** - View visit counts and last visited times
+The Filament admin panel includes widgets for URL stats and top pages.
 
-### Dashboard Widgets
+---
 
-The package provides two dashboard widgets:
+## Facade
 
-1. **URL Stats Overview** - Displays total URLs, redirects, and visit statistics
-2. **Top URLs Table** - Shows the 10 most visited URLs with their metrics
+```php
+use RayzenAI\UrlManager\Facades\UrlManager;
 
-### Filament Form Components
+UrlManager::generateUrl($product);
+UrlManager::trackVisit($product, auth()->id());
+UrlManager::createRedirect('/old', '/new', 301);
+UrlManager::findBySlug('products/my-product');
+UrlManager::getVisitCount($product);
+UrlManager::deleteUrl($product);
+```
 
-#### UrlInput Component
+---
 
-The package provides a `UrlInput` form component for managing slugs in Filament forms:
+## Filament Components
+
+### UrlInput
+
+Auto-slug generation with unique validation and redirect-chain protection:
 
 ```php
 use RayzenAI\UrlManager\Filament\Forms\Components\UrlInput;
 
 UrlInput::make('slug')
-    ->sourceField('name') // Auto-generate from name field
-    ->forModel(Product::class) // For proper validation
+    ->sourceField('name')
+    ->forModel(Product::class)
+    ->allowUpdatingSlug(); // Enables editing with automatic redirect creation
 ```
 
-**Allowing Slug Updates:**
+### Dashboard Widgets
 
-By default, slugs are disabled when editing records to prevent breaking existing URLs. To allow updates (with automatic redirect creation):
+- **UrlStatsOverview** — Total URLs, redirects, visit statistics
+- **TopUrlsTable** — Most visited URLs
+
+---
+
+## Artisan Commands
+
+| Command | Purpose |
+|---------|---------|
+| `urls:generate {model?}` | Generate URL records for models with HasUrl |
+| `sitemap:generate` | Generate XML sitemap |
+| `sitemap:generate-all` | Generate all sitemaps (URL + image + video) + index |
+| `sitemap:generate-images` | Generate image sitemap |
+| `sitemap:generate-videos` | Generate video sitemap |
+| `sitemap:submit` | Submit sitemap to Google Search Console |
+| `url-manager:check {model?}` | Verify model configuration |
+| `url-manager:make-model` | Scaffold a new model with HasUrl |
+| `url-manager:populate-country-codes` | Resolve country codes for existing visits |
+
+---
+
+## Models Using Enums for Active Status
+
+If your model uses an enum instead of a boolean for its active state, override `shouldHaveUrl()` and `isActiveForUrl()`:
 
 ```php
-UrlInput::make('slug')
-    ->allowUpdatingSlug() // Enables editing on existing records
+class College extends Model
+{
+    use HasUrl;
+
+    public function activeUrlField(): string
+    {
+        return 'status'; // Enum field — triggers wasChanged() detection
+    }
+
+    public function shouldHaveUrl(): bool
+    {
+        return $this->status === CollegeStatus::Approved;
+    }
+
+    public function isActiveForUrl(): bool
+    {
+        return $this->status === CollegeStatus::Approved;
+    }
+}
 ```
 
-**How it works:**
-- ✅ When you update a slug, the old URL is automatically converted to a redirect
-- ✅ Circular redirect chains are detected and prevented (A→B→A)
-- ✅ Throws exception if circular chain would be created
-- ✅ Works seamlessly with the `HasUrl` trait
-
-**Example:**
-1. Leader has slug `kp-oli` with URL `/leader/kp-oli`
-2. Admin updates slug to `kp-sharma-oli` in Filament
-3. Database now has:
-   - Active URL: `/leader/kp-sharma-oli` (points to leader)
-   - Redirect: `/leader/kp-oli` → `/leader/kp-sharma-oli`
-4. Users visiting old URL are automatically redirected
-
-## Best Practices
-
-1. **Always include an active field** (`is_active` or `active`) in models using HasUrl trait
-2. **Include a slug field** in models using HasUrl trait (override via `slugField()` if using different name)
-3. **Implement `webUrlPath()` method** to define URL structure
-4. **Override `activeUrlField()` method** if using a field name other than `is_active`
-5. **Use meaningful slugs** for SEO optimization
-6. **Allow slug updates safely** - Use `UrlInput::make('slug')->allowUpdatingSlug()` for automatic redirect creation
-7. **Generate sitemaps regularly** (via cron job)
-8. **Circular redirects are prevented automatically** - The package detects and blocks A→B→A or A→B→C→A chains
-9. **Use appropriate HTTP status codes** (301 for permanent, 302 for temporary)
+---
 
 ## Testing
 
-Run the package tests:
-
 ```bash
-composer test
+cd url-manager
+vendor/bin/pest
 ```
 
-## Troubleshooting
-
-### URLs not generating for models
-
-Ensure your model:
-- Uses the `HasUrl` trait
-- Has an active field (`is_active` or `active` - configurable via `activeUrlField()` method)
-- Implements the `webUrlPath()` method
-
-### Common URL Generation Issues
-
-1. **"URL with slug already exists for different model" Warning**
-   - This occurs when multiple models have the same slug
-   - Solution: Ensure unique slugs within each model type
-   - The command skips duplicates to maintain data integrity
-
-2. **Not all URLs are generated**
-   - Check for duplicate slugs in your data
-   - Verify models have unique slug values
-   - For large datasets, increase PHP memory limit
-   - Run the command multiple times if needed
-
-3. **Models using 'active' instead of 'is_active'**
-   - Override the `activeUrlField()` method in your model:
-   ```php
-   public function activeUrlField(): string
-   {
-       return 'active'; // Your model's active field name
-   }
-   ```
-
-### Sitemap not accessible
-
-Check that:
-- Sitemap generation is enabled in config
-- The public directory is writable
-- Routes are properly registered
-
-### Redirects not working
-
-Verify:
-- The `HandleUrlRedirects` middleware is registered with `prepend` (not `append`) in `bootstrap/app.php`
-- Middleware runs BEFORE route model binding
-- Redirect depth limit hasn't been exceeded (check `url-manager.max_redirect_depth` config)
-- Check for circular redirect chains in the database
-
-## Contributing
-
-Contributions are welcome! Please submit pull requests with tests.
+---
 
 ## License
 
-MIT License. See [LICENSE](LICENSE) file for details.
-
-## Support
-
-For issues and questions, please use the [GitHub issue tracker](https://github.com/rayzenai/url-manager/issues).
+MIT License. See [LICENSE](LICENSE) for details.
 
 ## Credits
 
