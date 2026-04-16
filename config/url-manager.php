@@ -132,6 +132,14 @@ return [
             | - null: Use original image (not recommended for performance)
             */
             'image_size' => 'auto',
+
+            /*
+            | Model types to exclude from the image sitemap.
+            | Use fully-qualified class names.
+            */
+            'excluded_models' => [
+                // 'App\Models\CartItem',
+            ],
         ],
 
         /*
