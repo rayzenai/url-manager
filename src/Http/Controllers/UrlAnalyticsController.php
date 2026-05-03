@@ -2,11 +2,11 @@
 
 namespace RayzenAI\UrlManager\Http\Controllers;
 
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use RayzenAI\UrlManager\Models\Url;
 use RayzenAI\UrlManager\Models\UrlVisit;
-use Carbon\Carbon;
 
 class UrlAnalyticsController extends Controller
 {
@@ -17,21 +17,21 @@ class UrlAnalyticsController extends Controller
     {
         $dateRange = $request->get('range', '7days');
         $urlId = $request->get('url_id');
-        
-        list($startDate, $endDate) = $this->getDateRange($dateRange);
-        
+
+        [$startDate, $endDate] = $this->getDateRange($dateRange);
+
         // Get overall statistics
         $stats = $this->getOverallStats($startDate, $endDate, $urlId);
-        
+
         // Get top URLs
         $topUrls = $this->getTopUrls($startDate, $endDate, 10);
-        
+
         // Get hourly distribution
         $hourlyDistribution = $this->getHourlyDistribution($startDate, $endDate, $urlId);
-        
+
         // Get recent visits
         $recentVisits = $this->getRecentVisits($urlId, 50);
-        
+
         return view('url-manager::analytics.index', compact(
             'stats',
             'topUrls',
@@ -43,31 +43,31 @@ class UrlAnalyticsController extends Controller
             'endDate'
         ));
     }
-    
+
     /**
      * Show analytics for a specific URL
      */
     public function show(Request $request, Url $url)
     {
         $dateRange = $request->get('range', '7days');
-        list($startDate, $endDate) = $this->getDateRange($dateRange);
-        
+        [$startDate, $endDate] = $this->getDateRange($dateRange);
+
         // Get URL-specific statistics
         $stats = UrlVisit::getStatistics($url->id, $startDate, $endDate);
-        
+
         // Get daily visits chart data
         $dailyVisits = $this->getDailyVisits($url->id, $startDate, $endDate);
-        
+
         // Get recent visits for this URL
         $recentVisits = UrlVisit::where('url_id', $url->id)
             ->with('user')
             ->latest()
             ->take(100)
             ->get();
-        
+
         // Get the model associated with this URL
         $model = $url->urable;
-        
+
         return view('url-manager::analytics.show', compact(
             'url',
             'model',
@@ -79,7 +79,7 @@ class UrlAnalyticsController extends Controller
             'endDate'
         ));
     }
-    
+
     /**
      * Export analytics data
      */
@@ -88,32 +88,32 @@ class UrlAnalyticsController extends Controller
         $dateRange = $request->get('range', '30days');
         $urlId = $request->get('url_id');
         $format = $request->get('format', 'csv');
-        
-        list($startDate, $endDate) = $this->getDateRange($dateRange);
-        
+
+        [$startDate, $endDate] = $this->getDateRange($dateRange);
+
         $query = UrlVisit::with(['url', 'user'])
             ->dateRange($startDate, $endDate);
-        
+
         if ($urlId) {
             $query->where('url_id', $urlId);
         }
-        
+
         $visits = $query->get();
-        
+
         if ($format === 'csv') {
             return $this->exportCsv($visits);
         }
-        
+
         return $this->exportJson($visits);
     }
-    
+
     /**
      * Get date range based on preset
      */
     protected function getDateRange(string $preset): array
     {
         $endDate = Carbon::now()->endOfDay();
-        
+
         switch ($preset) {
             case 'today':
                 $startDate = Carbon::today();
@@ -140,23 +140,23 @@ class UrlAnalyticsController extends Controller
             default:
                 $startDate = Carbon::now()->subDays(7)->startOfDay();
         }
-        
+
         return [$startDate, $endDate];
     }
-    
+
     /**
      * Get overall statistics
      */
     protected function getOverallStats($startDate, $endDate, $urlId = null)
     {
         $query = UrlVisit::dateRange($startDate, $endDate);
-        
+
         if ($urlId) {
             $query->where('url_id', $urlId);
         }
-        
+
         $visits = $query->get();
-        
+
         return [
             'total_visits' => $visits->count(),
             'unique_visitors' => $visits->unique('ip_address')->count(),
@@ -167,7 +167,7 @@ class UrlAnalyticsController extends Controller
             'tablet_visits' => $visits->where('device', 'tablet')->count(),
         ];
     }
-    
+
     /**
      * Get top URLs by visits
      */
@@ -181,7 +181,7 @@ class UrlAnalyticsController extends Controller
             ->limit($limit)
             ->get();
     }
-    
+
     /**
      * Get hourly distribution of visits
      */
@@ -191,22 +191,22 @@ class UrlAnalyticsController extends Controller
             ->selectRaw('EXTRACT(HOUR FROM created_at) as hour, COUNT(*) as count')
             ->groupBy('hour')
             ->orderBy('hour');
-        
+
         if ($urlId) {
             $query->where('url_id', $urlId);
         }
-        
+
         $data = $query->get()->pluck('count', 'hour');
-        
+
         // Fill in missing hours with 0
         $distribution = [];
         for ($i = 0; $i < 24; $i++) {
             $distribution[$i] = $data->get($i, 0);
         }
-        
+
         return $distribution;
     }
-    
+
     /**
      * Get daily visits for a URL
      */
@@ -219,7 +219,7 @@ class UrlAnalyticsController extends Controller
             ->orderBy('date')
             ->get();
     }
-    
+
     /**
      * Get recent visits
      */
@@ -228,14 +228,14 @@ class UrlAnalyticsController extends Controller
         $query = UrlVisit::with(['url', 'user'])
             ->latest()
             ->limit($limit);
-        
+
         if ($urlId) {
             $query->where('url_id', $urlId);
         }
-        
+
         return $query->get();
     }
-    
+
     /**
      * Export visits as CSV
      */
@@ -245,10 +245,10 @@ class UrlAnalyticsController extends Controller
             'Content-Type' => 'text/csv',
             'Content-Disposition' => 'attachment; filename="url-visits-' . date('Y-m-d') . '.csv"',
         ];
-        
-        $callback = function() use ($visits) {
+
+        $callback = function () use ($visits) {
             $file = fopen('php://output', 'w');
-            
+
             // Header row
             fputcsv($file, [
                 'Date',
@@ -260,7 +260,7 @@ class UrlAnalyticsController extends Controller
                 'Device',
                 'Referer',
             ]);
-            
+
             // Data rows
             foreach ($visits as $visit) {
                 fputcsv($file, [
@@ -274,13 +274,13 @@ class UrlAnalyticsController extends Controller
                     $visit->referer,
                 ]);
             }
-            
+
             fclose($file);
         };
-        
+
         return response()->stream($callback, 200, $headers);
     }
-    
+
     /**
      * Export visits as JSON
      */

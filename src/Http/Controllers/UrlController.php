@@ -5,6 +5,7 @@ namespace RayzenAI\UrlManager\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use RayzenAI\UrlManager\Models\Url;
+use RayzenAI\UrlManager\Services\VisitTracker;
 
 class UrlController extends Controller
 {
@@ -53,11 +54,11 @@ class UrlController extends Controller
         }
 
         // Record visit using the centralized service
-        \RayzenAI\UrlManager\Services\VisitTracker::trackVisit($url);
+        VisitTracker::trackVisit($url);
 
         // Return view based on type
         $viewName = $this->getViewName($url->type);
-        
+
         if (view()->exists($viewName)) {
             return view($viewName, [
                 'url' => $url,
@@ -130,7 +131,7 @@ class UrlController extends Controller
      */
     public function sitemap()
     {
-        if (!config('url-manager.sitemap.enabled', true)) {
+        if (! config('url-manager.sitemap.enabled', true)) {
             abort(404);
         }
 

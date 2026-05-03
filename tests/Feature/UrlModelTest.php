@@ -29,8 +29,10 @@ it('can create a redirect', function () {
 
 it('generates unique slugs', function () {
     // Create mock model
-    $model = new class {
+    $model = new class
+    {
         public $id = 1;
+
         public $name = 'Test Product';
     };
 
@@ -47,8 +49,10 @@ it('generates unique slugs', function () {
     ]);
 
     // Generate another slug for the same name
-    $model2 = new class {
+    $model2 = new class
+    {
         public $id = 2;
+
         public $name = 'Test Product';
     };
 

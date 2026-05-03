@@ -24,12 +24,12 @@ class UrlStatsOverview extends StatsOverviewWidget
                 ->description($activeUrls . ' active, ' . $inactiveUrls . ' inactive')
                 ->descriptionIcon('heroicon-m-link')
                 ->color('primary'),
-            
+
             Stat::make('Redirects', number_format($redirects))
                 ->description('301 & 302 redirects')
                 ->descriptionIcon('heroicon-m-arrows-right-left')
                 ->color('warning'),
-            
+
             Stat::make('Total Visits', $this->formatNumber($totalVisits))
                 ->description($todayVisits . ' today')
                 ->descriptionIcon('heroicon-m-eye')

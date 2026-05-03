@@ -15,28 +15,30 @@ class GenerateUrlsForModels extends Command
     public function handle()
     {
         $modelClass = $this->argument('model');
-        
+
         if ($modelClass) {
             $this->generateForModel($modelClass);
         } else {
             $this->generateForAllModels();
         }
-        
+
         return 0;
     }
-    
+
     protected function generateForModel(string $modelClass)
     {
-        if (!class_exists($modelClass)) {
+        if (! class_exists($modelClass)) {
             $this->error("Model class {$modelClass} does not exist.");
+
             return;
         }
-        
-        if (!in_array(HasUrl::class, class_uses_recursive($modelClass))) {
+
+        if (! in_array(HasUrl::class, class_uses_recursive($modelClass))) {
             $this->error("Model {$modelClass} does not use the HasUrl trait.");
+
             return;
         }
-        
+
         $this->info("Generating URLs for {$modelClass}...");
 
         $count = 0;
@@ -58,6 +60,7 @@ class GenerateUrlsForModels extends Command
                     // Models without a shouldHaveUrl() override default to true via the trait.
                     if (method_exists($model, 'shouldHaveUrl') && ! $model->shouldHaveUrl()) {
                         $skipped++;
+
                         continue;
                     }
 
@@ -72,6 +75,7 @@ class GenerateUrlsForModels extends Command
                         if (! $existingUrl->urable_id || $existingUrl->urable_id != $model->id) {
                             $this->warn("URL with slug '{$path}' already exists for different model. Skipping...");
                         }
+
                         continue;
                     }
 
@@ -87,49 +91,50 @@ class GenerateUrlsForModels extends Command
 
                         $count++;
                     } catch (\Exception $e) {
-                        $this->error("Failed to create URL for {$modelClass} ID {$model->id}: ".$e->getMessage());
+                        $this->error("Failed to create URL for {$modelClass} ID {$model->id}: " . $e->getMessage());
                     }
                 }
             }, 'id');
 
-        $this->info("Generated {$count} URLs for {$modelClass}".($skipped > 0 ? " (skipped {$skipped} via shouldHaveUrl())" : ''));
+        $this->info("Generated {$count} URLs for {$modelClass}" . ($skipped > 0 ? " (skipped {$skipped} via shouldHaveUrl())" : ''));
     }
-    
+
     protected function generateForAllModels()
     {
         $this->info('Scanning for models with HasUrl trait...');
-        
+
         // Get all model files from app/Models directory
         $modelsPath = app_path('Models');
-        
-        if (!is_dir($modelsPath)) {
+
+        if (! is_dir($modelsPath)) {
             $this->error('Models directory not found.');
+
             return;
         }
-        
+
         $modelFiles = glob($modelsPath . '/*.php');
-        
+
         foreach ($modelFiles as $file) {
             $className = 'App\\Models\\' . basename($file, '.php');
-            
-            if (!class_exists($className)) {
+
+            if (! class_exists($className)) {
                 continue;
             }
-            
-            if (!in_array(HasUrl::class, class_uses_recursive($className))) {
+
+            if (! in_array(HasUrl::class, class_uses_recursive($className))) {
                 continue;
             }
-            
+
             $this->generateForModel($className);
         }
-        
+
         $this->info('URL generation complete!');
     }
-    
+
     protected function getUrlType(string $modelClass): string
     {
         $className = class_basename($modelClass);
-        
+
         $typeMap = [
             'Product' => Url::TYPE_ENTITY,
             'Entity' => Url::TYPE_ENTITY,
@@ -139,7 +144,7 @@ class GenerateUrlsForModels extends Command
             'Blog' => Url::TYPE_BLOG,
             'Page' => Url::TYPE_PAGE,
         ];
-        
+
         return $typeMap[$className] ?? Url::TYPE_PAGE;
     }
 }

@@ -2,8 +2,8 @@
 
 namespace RayzenAI\UrlManager\Filament\Resources\UrlVisitResource\Pages;
 
-use RayzenAI\UrlManager\Filament\Resources\UrlVisitResource;
 use Filament\Resources\Pages\ListRecords;
+use RayzenAI\UrlManager\Filament\Resources\UrlVisitResource;
 
 class ListUrlVisits extends ListRecords
 {
@@ -13,7 +13,7 @@ class ListUrlVisits extends ListRecords
     {
         return [];
     }
-    
+
     protected function getHeaderWidgets(): array
     {
         return [

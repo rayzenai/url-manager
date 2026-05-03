@@ -32,16 +32,16 @@ class SubmitSitemapToGoogle extends Command
         $sitemapUrl = $this->option('url');
         $googleOnly = $this->option('google');
         $bingOnly = $this->option('bing');
-        
+
         $this->info('Submitting sitemap to search engines...');
-        
+
         if ($sitemapUrl) {
             $this->line("Using custom sitemap URL: {$sitemapUrl}");
         } else {
             $sitemapUrl = url('/sitemap.xml');
             $this->line("Using default sitemap URL: {$sitemapUrl}");
         }
-        
+
         // Submit based on options
         if ($googleOnly) {
             $this->submitToGoogle($sitemapUrl);
@@ -50,19 +50,19 @@ class SubmitSitemapToGoogle extends Command
         } else {
             $this->submitToAll($sitemapUrl);
         }
-        
+
         return Command::SUCCESS;
     }
-    
+
     /**
      * Submit to Google only
      */
     private function submitToGoogle(string $sitemapUrl): void
     {
         $this->info('Submitting to Google...');
-        
+
         $result = GoogleSearchConsoleService::submitGoogleSitemap($sitemapUrl);
-        
+
         if ($result['success']) {
             $this->info('✅ Successfully submitted to Google via API!');
         } else {
@@ -72,16 +72,16 @@ class SubmitSitemapToGoogle extends Command
             }
         }
     }
-    
+
     /**
      * Submit to Bing only
      */
     private function submitToBing(string $sitemapUrl): void
     {
         $this->info('Submitting to Bing...');
-        
+
         $result = GoogleSearchConsoleService::submitBingSitemap($sitemapUrl);
-        
+
         if ($result['success']) {
             $this->info('✅ Successfully submitted to Bing!');
         } else {
@@ -91,7 +91,7 @@ class SubmitSitemapToGoogle extends Command
             }
         }
     }
-    
+
     /**
      * Submit to all search engines
      */
@@ -100,25 +100,25 @@ class SubmitSitemapToGoogle extends Command
         $this->info('Submitting to all search engines...');
         $this->line("Sitemap URL: {$sitemapUrl}");
         $this->newLine();
-        
+
         $result = GoogleSearchConsoleService::submitToAllSearchEngines($sitemapUrl);
-        
+
         // Track successful submissions
         $successCount = 0;
         $totalCount = 0;
-        
+
         // Show results for each search engine
         if (isset($result['results']['google'])) {
             $totalCount++;
             $this->line('📍 Google Search Console:');
-            
+
             if ($result['results']['google']['success']) {
                 $successCount++;
                 $this->info('   ✅ Successfully submitted via ' . ($result['results']['google']['method'] ?? 'API'));
             } else {
                 $this->error('   ❌ Submission failed');
                 $this->line('   Reason: ' . ($result['results']['google']['message'] ?? 'Unknown error'));
-                
+
                 // Provide helpful info if available
                 if (isset($result['results']['google']['info'])) {
                     $this->warn('   ℹ️  ' . $result['results']['google']['info']);
@@ -127,20 +127,20 @@ class SubmitSitemapToGoogle extends Command
         } else {
             $this->warn('📍 Google: Not attempted (no response)');
         }
-        
+
         $this->newLine();
-        
+
         if (isset($result['results']['bing'])) {
             $totalCount++;
             $this->line('📍 Bing Webmaster Tools:');
-            
+
             if ($result['results']['bing']['success']) {
                 $successCount++;
                 $this->info('   ✅ Successfully submitted via ' . ($result['results']['bing']['method'] ?? 'ping'));
             } else {
                 $this->error('   ❌ Submission failed');
                 $this->line('   Reason: ' . ($result['results']['bing']['message'] ?? 'Unknown error'));
-                
+
                 // Provide helpful info if available
                 if (isset($result['results']['bing']['info'])) {
                     $this->warn('   ℹ️  ' . $result['results']['bing']['info']);
@@ -149,10 +149,10 @@ class SubmitSitemapToGoogle extends Command
         } else {
             $this->warn('📍 Bing: Not attempted (no response)');
         }
-        
+
         $this->newLine();
         $this->line('─────────────────────────────────');
-        
+
         if ($successCount === $totalCount && $totalCount > 0) {
             $this->info("🎉 All submissions completed successfully! ({$successCount}/{$totalCount})");
         } elseif ($successCount > 0) {

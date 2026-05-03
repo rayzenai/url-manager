@@ -12,11 +12,11 @@ class CreateUrl extends CreateRecord
     protected function mutateFormDataBeforeCreate(array $data): array
     {
         $data['last_modified_at'] = now();
-        
-        if (!isset($data['visits'])) {
+
+        if (! isset($data['visits'])) {
             $data['visits'] = 0;
         }
-        
+
         return $data;
     }
 

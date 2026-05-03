@@ -60,7 +60,7 @@ class UrlSourceInput extends TextInput
         $modelClass = $record ? get_class($record) : $this->getModel();
 
         while ($this->slugExists($slug, $record, $modelClass)) {
-            $slug = $baseSlug.'-'.$count;
+            $slug = $baseSlug . '-' . $count;
             $count++;
         }
 

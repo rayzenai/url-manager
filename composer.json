@@ -24,7 +24,15 @@
     "require-dev": {
         "orchestra/testbench": "^11.0",
         "pestphp/pest": "^4.0",
-        "pestphp/pest-plugin-laravel": "^4.0"
+        "pestphp/pest-plugin-laravel": "^4.0",
+        "laravel/pint": "^1.18",
+        "larastan/larastan": "^3.0"
+    },
+    "scripts": {
+        "lint": "pint --format agent",
+        "lint:test": "pint --test --format agent",
+        "stan": "phpstan analyse --memory-limit=2G",
+        "test": "pest --compact"
     },
     "autoload": {
         "psr-4": {

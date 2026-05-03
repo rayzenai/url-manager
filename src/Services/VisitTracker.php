@@ -13,7 +13,7 @@ class VisitTracker
      */
     public static function trackVisit(Url $url, ?Request $request = null): void
     {
-        if (!config('url-manager.track_visits', true)) {
+        if (! config('url-manager.track_visits', true)) {
             return;
         }
 
@@ -37,52 +37,52 @@ class VisitTracker
                 'referer' => $referer,
             ]
         );
-        
+
         // Fire event for custom handling
         event('url-manager.url.visited', [$url, $url->urable]);
     }
-    
+
     /**
      * Track a visit by finding the URL from request path
      */
     public static function trackVisitByPath(Request $request): void
     {
-        if (!config('url-manager.track_visits', true)) {
+        if (! config('url-manager.track_visits', true)) {
             return;
         }
-        
+
         $path = ltrim($request->path(), '/');
-        
+
         // Convert API path to URL Manager slug format if needed
         $slug = self::convertApiPathToSlug($path);
-        
-        if (!$slug) {
+
+        if (! $slug) {
             return;
         }
-        
+
         // Find URL record by slug (case-insensitive)
         $url = Url::whereRaw('LOWER(slug) = ?', [strtolower($slug)])
             ->where('status', Url::STATUS_ACTIVE)
             ->first();
-            
+
         if ($url) {
             self::trackVisit($url, $request);
         }
     }
-    
+
     /**
      * Convert API path to URL Manager slug format using configured conversions
      */
     public static function convertApiPathToSlug(string $path): ?string
     {
         $conversions = config('url-manager.api_path_conversions', []);
-        
+
         foreach ($conversions as $pattern => $replacement) {
             if (preg_match($pattern, $path)) {
                 return preg_replace($pattern, $replacement, $path);
             }
         }
-        
+
         // If no conversion found, return the original path
         return $path;
     }

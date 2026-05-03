@@ -91,7 +91,7 @@ class JsonLd
 
         foreach (self::$schemas as $schema) {
             $json = json_encode($schema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
-            $tags[] = '<script type="application/ld+json">'.$json.'</script>';
+            $tags[] = '<script type="application/ld+json">' . $json . '</script>';
         }
 
         return implode("\n", $tags);

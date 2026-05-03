@@ -5,11 +5,11 @@ namespace RayzenAI\UrlManager;
 use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Route;
 use RayzenAI\UrlManager\Commands\CheckUrlManagerCommand;
-use RayzenAI\UrlManager\Commands\GenerateSitemap;
 use RayzenAI\UrlManager\Commands\GenerateAllSitemaps;
 use RayzenAI\UrlManager\Commands\GenerateImageSitemap;
-use RayzenAI\UrlManager\Commands\GenerateVideoSitemap;
+use RayzenAI\UrlManager\Commands\GenerateSitemap;
 use RayzenAI\UrlManager\Commands\GenerateUrlsForModels;
+use RayzenAI\UrlManager\Commands\GenerateVideoSitemap;
 use RayzenAI\UrlManager\Commands\MakeModelCommand;
 use RayzenAI\UrlManager\Commands\PopulateUrlVisitCountryCodes;
 use RayzenAI\UrlManager\Commands\SubmitSitemapToGoogle;
@@ -48,16 +48,16 @@ class UrlManagerServiceProvider extends PackageServiceProvider
     public function packageRegistered()
     {
         $this->app->singleton('url-manager', function ($app) {
-            return new UrlManagerService();
+            return new UrlManagerService;
         });
     }
-    
+
     public function packageBooted()
     {
         $this->registerMiddleware();
         $this->registerApiRoutes();
     }
-    
+
     protected function registerApiRoutes()
     {
         Route::group([
@@ -67,19 +67,19 @@ class UrlManagerServiceProvider extends PackageServiceProvider
             $this->loadRoutesFrom(__DIR__ . '/../routes/api.php');
         });
     }
-    
+
     protected function registerMiddleware()
     {
-        if (!config('url-manager.middleware.enabled', true)) {
+        if (! config('url-manager.middleware.enabled', true)) {
             return;
         }
-        
+
         $router = $this->app->make(Router::class);
         $alias = config('url-manager.middleware.alias', 'track-url-visits');
-        
+
         // Register middleware alias
         $router->aliasMiddleware($alias, TrackUrlVisits::class);
-        
+
         // Auto-apply to web routes if configured
         if (config('url-manager.middleware.auto_apply', false)) {
             $router->pushMiddlewareToGroup('web', TrackUrlVisits::class);

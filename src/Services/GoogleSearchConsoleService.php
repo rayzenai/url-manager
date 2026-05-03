@@ -5,6 +5,7 @@ namespace RayzenAI\UrlManager\Services;
 use Exception;
 use Google\Client;
 use Google\Service\SearchConsole;
+use Google\Service\SearchConsole\SearchAnalyticsQueryRequest;
 use Google\Service\Webmasters;
 use Illuminate\Support\Facades\Log;
 use RayzenAI\UrlManager\Models\GoogleSearchConsoleSetting;
@@ -12,9 +13,11 @@ use RayzenAI\UrlManager\Models\GoogleSearchConsoleSetting;
 class GoogleSearchConsoleService
 {
     protected ?Client $client = null;
+
     protected ?Webmasters $webmastersService = null;
+
     protected ?SearchConsole $searchConsoleService = null;
-    
+
     /**
      * Initialize Google API client with Service Account credentials
      */
@@ -23,65 +26,66 @@ class GoogleSearchConsoleService
         if ($this->client !== null) {
             return;
         }
-        
+
         // Get settings from database
         $settings = GoogleSearchConsoleSetting::getSettings();
-        
-        if (!$settings->enabled) {
+
+        if (! $settings->enabled) {
             return;
         }
-        
+
         // Check if service account credentials are configured
-        if (!$settings->credentials) {
+        if (! $settings->credentials) {
             return;
         }
-        
+
         try {
-            $this->client = new Client();
+            $this->client = new Client;
             $this->client->setApplicationName('URL Manager - Search Console');
-            
+
             // Create a temporary file with the credentials
             $tempFile = tempnam(sys_get_temp_dir(), 'gsc_');
             file_put_contents($tempFile, $settings->credentials_json);
-            
+
             $this->client->setAuthConfig($tempFile);
             $this->client->setScopes([
                 SearchConsole::WEBMASTERS,
                 SearchConsole::WEBMASTERS_READONLY,
             ]);
-            
+
             // Initialize services
             $this->webmastersService = new Webmasters($this->client);
             $this->searchConsoleService = new SearchConsole($this->client);
-            
+
             // Clean up temp file
             unlink($tempFile);
         } catch (Exception $e) {
             Log::error('Failed to initialize Google Search Console client', [
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
         }
     }
+
     /**
      * Submit sitemap to Google using API if available
      */
     public static function submitGoogleSitemap(?string $sitemapUrl = null): array
     {
-        $instance = new static();
+        $instance = new static;
         $instance->initializeClient();
-        
+
         // Check if API is configured
-        if (!$instance->webmastersService) {
+        if (! $instance->webmastersService) {
             return [
                 'success' => false,
                 'message' => 'Google Search Console API is not configured.',
                 'info' => 'Please upload Service Account credentials JSON file in your admin panel settings.',
             ];
         }
-        
+
         return $instance->submitSitemapViaApi($sitemapUrl);
     }
-    
+
     /**
      * Submit sitemap using Google Search Console API
      */
@@ -91,13 +95,13 @@ class GoogleSearchConsoleService
             $sitemapUrl = $sitemapUrl ?: url('/sitemap.xml');
             $settings = GoogleSearchConsoleSetting::getSettings();
             $siteUrl = $settings->site_url ?: url('/');
-            
+
             // First, verify the site is added
             $this->verifySiteInSearchConsole($siteUrl);
-            
+
             // Submit the sitemap
             $this->webmastersService->sitemaps->submit($siteUrl, $sitemapUrl);
-            
+
             return [
                 'success' => true,
                 'message' => 'Sitemap successfully submitted to Google via API',
@@ -109,7 +113,7 @@ class GoogleSearchConsoleService
                 'error' => $e->getMessage(),
                 'sitemap_url' => $sitemapUrl,
             ]);
-            
+
             return [
                 'success' => false,
                 'message' => 'Failed to submit sitemap via API: ' . $e->getMessage(),
@@ -117,7 +121,7 @@ class GoogleSearchConsoleService
             ];
         }
     }
-    
+
     /**
      * Verify site is added to Google Search Console
      */
@@ -127,16 +131,16 @@ class GoogleSearchConsoleService
             // Check if site exists
             $sites = $this->webmastersService->sites->listSites();
             $siteExists = false;
-            
+
             foreach ($sites->getSiteEntry() as $site) {
                 if ($site->getSiteUrl() === $siteUrl) {
                     $siteExists = true;
                     break;
                 }
             }
-            
+
             // Add site if it doesn't exist
-            if (!$siteExists) {
+            if (! $siteExists) {
                 $this->webmastersService->sites->add($siteUrl);
             }
         } catch (Exception $e) {
@@ -147,8 +151,7 @@ class GoogleSearchConsoleService
             ]);
         }
     }
-    
-    
+
     /**
      * Submit sitemap to Bing via API (placeholder for future implementation)
      * Currently Bing requires manual submission through their webmaster tools
@@ -164,7 +167,7 @@ class GoogleSearchConsoleService
             'sitemap_url' => $sitemapUrl ?: url('/sitemap.xml'),
         ];
     }
-    
+
     /**
      * Submit sitemap to multiple search engines
      */
@@ -172,45 +175,45 @@ class GoogleSearchConsoleService
     {
         $sitemapUrl = $sitemapUrl ?: url('/sitemap.xml');
         $results = [];
-        
+
         // Submit to Google via API
         $googleResult = self::submitGoogleSitemap($sitemapUrl);
         $results['google'] = $googleResult;
-        
+
         // Note about Bing (no API available)
         $bingResult = self::submitBingSitemap($sitemapUrl);
         $results['bing'] = $bingResult;
-        
+
         // Check if all submissions were successful
-        $allSuccessful = collect($results)->every(fn($result) => $result['success']);
-        
+        $allSuccessful = collect($results)->every(fn ($result) => $result['success']);
+
         return [
             'success' => $allSuccessful,
             'results' => $results,
             'sitemap_url' => $sitemapUrl,
         ];
     }
-    
+
     /**
      * Get list of sitemaps for a site
      */
     public function getSitemaps(?string $siteUrl = null): array
     {
         $this->initializeClient();
-        
-        if (!$this->webmastersService) {
+
+        if (! $this->webmastersService) {
             return [
                 'success' => false,
                 'message' => 'Google Search Console API not configured',
                 'sitemaps' => [],
             ];
         }
-        
+
         try {
             $settings = GoogleSearchConsoleSetting::getSettings();
             $siteUrl = $siteUrl ?: $settings->site_url ?: url('/');
             $sitemaps = $this->webmastersService->sitemaps->listSitemaps($siteUrl);
-            
+
             $sitemapList = [];
             foreach ($sitemaps->getSitemap() as $sitemap) {
                 $sitemapList[] = [
@@ -224,7 +227,7 @@ class GoogleSearchConsoleService
                     'contents' => $sitemap->getContents(),
                 ];
             }
-            
+
             return [
                 'success' => true,
                 'sitemaps' => $sitemapList,
@@ -237,26 +240,26 @@ class GoogleSearchConsoleService
             ];
         }
     }
-    
+
     /**
      * Delete a sitemap from Google Search Console
      */
     public function deleteSitemap(string $sitemapUrl, ?string $siteUrl = null): array
     {
         $this->initializeClient();
-        
-        if (!$this->webmastersService) {
+
+        if (! $this->webmastersService) {
             return [
                 'success' => false,
                 'message' => 'Google Search Console API not configured',
             ];
         }
-        
+
         try {
             $settings = GoogleSearchConsoleSetting::getSettings();
             $siteUrl = $siteUrl ?: $settings->site_url ?: url('/');
             $this->webmastersService->sitemaps->delete($siteUrl, $sitemapUrl);
-            
+
             return [
                 'success' => true,
                 'message' => 'Sitemap deleted successfully',
@@ -268,34 +271,34 @@ class GoogleSearchConsoleService
             ];
         }
     }
-    
+
     /**
      * Get search analytics data
      */
     public function getSearchAnalytics(?string $siteUrl = null, array $options = []): array
     {
         $this->initializeClient();
-        
-        if (!$this->searchConsoleService) {
+
+        if (! $this->searchConsoleService) {
             return [
                 'success' => false,
                 'message' => 'Google Search Console API not configured',
                 'data' => [],
             ];
         }
-        
+
         try {
             $settings = GoogleSearchConsoleSetting::getSettings();
             $siteUrl = $siteUrl ?: $settings->site_url ?: url('/');
-            
-            $request = new \Google\Service\SearchConsole\SearchAnalyticsQueryRequest();
+
+            $request = new SearchAnalyticsQueryRequest;
             $request->setStartDate($options['start_date'] ?? date('Y-m-d', strtotime('-30 days')));
             $request->setEndDate($options['end_date'] ?? date('Y-m-d'));
             $request->setDimensions($options['dimensions'] ?? ['query', 'page']);
             $request->setRowLimit($options['row_limit'] ?? 100);
-            
+
             $response = $this->searchConsoleService->searchanalytics->query($siteUrl, $request);
-            
+
             $data = [];
             foreach ($response->getRows() as $row) {
                 $data[] = [
@@ -306,7 +309,7 @@ class GoogleSearchConsoleService
                     'position' => $row->getPosition(),
                 ];
             }
-            
+
             return [
                 'success' => true,
                 'data' => $data,

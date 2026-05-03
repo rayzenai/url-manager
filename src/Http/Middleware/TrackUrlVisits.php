@@ -14,10 +14,10 @@ class TrackUrlVisits
     public function handle(Request $request, Closure $next)
     {
         $response = $next($request);
-        
+
         // Track visit after response is generated
         VisitTracker::trackVisitByPath($request);
-        
+
         return $response;
     }
 }

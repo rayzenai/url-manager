@@ -2,7 +2,6 @@
 
 namespace RayzenAI\UrlManager\Filament\Widgets;
 
-use Filament\Tables;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Filament\Widgets\TableWidget as BaseWidget;
@@ -11,9 +10,9 @@ use RayzenAI\UrlManager\Models\Url;
 class TopUrlsTable extends BaseWidget
 {
     protected static ?int $sort = 2;
-    
-    protected int | string | array $columnSpan = 'full';
-    
+
+    protected int|string|array $columnSpan = 'full';
+
     protected static ?string $heading = 'Most Visited URLs';
 
     public function table(Table $table): Table
@@ -32,7 +31,7 @@ class TopUrlsTable extends BaseWidget
                     ->limit(50)
                     ->url(fn (Url $record): string => $record->getAbsoluteUrl())
                     ->openUrlInNewTab(),
-                
+
                 TextColumn::make('type')
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
@@ -41,12 +40,12 @@ class TopUrlsTable extends BaseWidget
                         'redirect' => 'warning',
                         default => 'gray',
                     }),
-                
+
                 TextColumn::make('visits')
                     ->numeric()
                     ->sortable()
                     ->color('success'),
-                
+
                 TextColumn::make('last_visited_at')
                     ->dateTime()
                     ->sortable()

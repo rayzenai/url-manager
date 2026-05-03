@@ -35,17 +35,17 @@ class RecordUrlVisit implements ShouldQueue
     {
         // Create detailed visit record using UrlVisit model
         $visit = UrlVisit::createFromRequest($this->url, $this->userId, $this->metadata);
-        
+
         // Also record the basic URL visit count
         $this->url->recordVisit();
-        
+
         // Get the related model
         $model = $this->url->urable;
-        
-        if (!$model) {
+
+        if (! $model) {
             return;
         }
-        
+
         // Fire event for custom handling (e.g., entity view tracking)
         event('url-manager.visit.recorded', [
             'url' => $this->url,
@@ -54,16 +54,16 @@ class RecordUrlVisit implements ShouldQueue
             'user_id' => $this->userId,
             'metadata' => $this->metadata,
         ]);
-        
+
         // If the model has a recordVisit method, call it
         if (method_exists($model, 'recordVisit')) {
             $model->recordVisit($this->userId, $this->metadata);
         }
-        
+
         // Handle model-specific visit tracking
         $this->handleModelSpecificTracking($model);
     }
-    
+
     /**
      * Handle model-specific visit tracking
      */

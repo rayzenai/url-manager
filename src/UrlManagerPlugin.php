@@ -23,11 +23,11 @@ class UrlManagerPlugin implements Plugin
             UrlResource::class,
             UrlVisitResource::class,
         ]);
-        
+
         $panel->pages([
             GoogleSearchConsoleSettings::class,
         ]);
-        
+
         if (config('url-manager.filament.widgets', true)) {
             $panel->widgets([
                 UrlStatsOverview::class,

@@ -17,23 +17,24 @@ class UrlResource extends Resource
     protected static ?string $model = Url::class;
 
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-link';
+
     protected static ?int $navigationSort = 100;
-    
+
     public static function getNavigationGroup(): ?string
     {
         return config('url-manager.filament.navigation_group', 'System');
     }
-    
+
     public static function getNavigationLabel(): string
     {
         return 'URLs';
     }
-    
+
     public static function getPluralLabel(): string
     {
         return 'URLs';
     }
-    
+
     public static function getLabel(): string
     {
         return 'URL';

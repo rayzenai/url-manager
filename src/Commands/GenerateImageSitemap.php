@@ -5,6 +5,8 @@ namespace RayzenAI\UrlManager\Commands;
 use Illuminate\Console\Command;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Kirantimsina\FileManager\Facades\FileManager;
+use RayzenAI\UrlManager\Models\GoogleSearchConsoleSetting;
 use RayzenAI\UrlManager\Models\Url;
 
 class GenerateImageSitemap extends Command
@@ -150,24 +152,24 @@ class GenerateImageSitemap extends Command
         });
 
         foreach ($query->get(['urable_type', 'urable_id', 'slug']) as $url) {
-            $key = $url->urable_type.':'.$url->urable_id;
+            $key = $url->urable_type . ':' . $url->urable_id;
             $this->urlCache[$key] = $url->getFullPath();
         }
     }
 
     protected function generateImageXml(Collection $images): string
     {
-        $settings = \RayzenAI\UrlManager\Models\GoogleSearchConsoleSetting::getSettings();
+        $settings = GoogleSearchConsoleSetting::getSettings();
         $siteUrl = rtrim($settings->frontend_url ?: url('/'), '/');
 
-        $xml = '<?xml version="1.0" encoding="UTF-8"?>'.PHP_EOL;
+        $xml = '<?xml version="1.0" encoding="UTF-8"?>' . PHP_EOL;
         $xml .= '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" ';
         $xml .= 'xmlns:image="http://www.google.com/schemas/sitemap-image/1.1" ';
         $xml .= 'xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" ';
         $xml .= 'xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9 ';
         $xml .= 'http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd ';
         $xml .= 'http://www.google.com/schemas/sitemap-image/1.1 ';
-        $xml .= 'http://www.google.com/schemas/sitemap-image/1.1/sitemap-image.xsd">'.PHP_EOL;
+        $xml .= 'http://www.google.com/schemas/sitemap-image/1.1/sitemap-image.xsd">' . PHP_EOL;
 
         // Group images by their parent page URL
         $groupedImages = [];
@@ -181,29 +183,29 @@ class GenerateImageSitemap extends Command
         }
 
         foreach ($groupedImages as $urlPath => $urlImages) {
-            $xml .= '  <url>'.PHP_EOL;
-            $xml .= '    <loc>'.htmlspecialchars($siteUrl.$urlPath).'</loc>'.PHP_EOL;
+            $xml .= '  <url>' . PHP_EOL;
+            $xml .= '    <loc>' . htmlspecialchars($siteUrl . $urlPath) . '</loc>' . PHP_EOL;
 
             foreach ($urlImages as $image) {
                 $imageUrl = $this->getImageUrl($image);
                 if ($imageUrl) {
-                    $xml .= '    <image:image>'.PHP_EOL;
-                    $xml .= '      <image:loc>'.htmlspecialchars($imageUrl).'</image:loc>'.PHP_EOL;
+                    $xml .= '    <image:image>' . PHP_EOL;
+                    $xml .= '      <image:loc>' . htmlspecialchars($imageUrl) . '</image:loc>' . PHP_EOL;
 
                     $title = $this->getImageTitle($image);
                     if ($title) {
                         $title = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/', '', $title);
-                        $xml .= '      <image:title>'.htmlspecialchars($title).'</image:title>'.PHP_EOL;
+                        $xml .= '      <image:title>' . htmlspecialchars($title) . '</image:title>' . PHP_EOL;
                     }
 
-                    $xml .= '    </image:image>'.PHP_EOL;
+                    $xml .= '    </image:image>' . PHP_EOL;
                 }
             }
 
-            $xml .= '  </url>'.PHP_EOL;
+            $xml .= '  </url>' . PHP_EOL;
         }
 
-        $xml .= '</urlset>'.PHP_EOL;
+        $xml .= '</urlset>' . PHP_EOL;
 
         return $xml;
     }
@@ -211,7 +213,7 @@ class GenerateImageSitemap extends Command
     protected function getParentUrl($image): ?string
     {
         if ($image->mediable_type && $image->mediable_id) {
-            $key = $image->mediable_type.':'.$image->mediable_id;
+            $key = $image->mediable_type . ':' . $image->mediable_id;
 
             return $this->urlCache[$key] ?? null;
         }
@@ -228,14 +230,14 @@ class GenerateImageSitemap extends Command
         $imageSize = $this->getCachedImageSize();
 
         // Use FileManager to get the full URL (handles S3, local storage, etc.)
-        if (class_exists(\Kirantimsina\FileManager\Facades\FileManager::class)) {
+        if (class_exists(FileManager::class)) {
             return $imageSize
-                ? \Kirantimsina\FileManager\Facades\FileManager::getMediaPath($image->file_name, $imageSize)
-                : \Kirantimsina\FileManager\Facades\FileManager::getMediaPath($image->file_name);
+                ? FileManager::getMediaPath($image->file_name, $imageSize)
+                : FileManager::getMediaPath($image->file_name);
         }
 
         // Fallback to manual URL construction
-        $settings = \RayzenAI\UrlManager\Models\GoogleSearchConsoleSetting::getSettings();
+        $settings = GoogleSearchConsoleSetting::getSettings();
         $siteUrl = rtrim($settings->frontend_url ?: url('/'), '/');
 
         if (filter_var($image->file_name, FILTER_VALIDATE_URL)) {
@@ -243,14 +245,14 @@ class GenerateImageSitemap extends Command
         }
 
         if (str_starts_with($image->file_name, 'storage/')) {
-            return $siteUrl.'/'.$image->file_name;
+            return $siteUrl . '/' . $image->file_name;
         }
 
         if (str_starts_with($image->file_name, '/')) {
-            return $siteUrl.$image->file_name;
+            return $siteUrl . $image->file_name;
         }
 
-        return $siteUrl.'/storage/'.$image->file_name;
+        return $siteUrl . '/storage/' . $image->file_name;
     }
 
     protected function getCachedImageSize(): ?string
@@ -316,7 +318,7 @@ class GenerateImageSitemap extends Command
         }
 
         if ($closestSize) {
-            $this->info("Auto-selected closest image size '{$closestSize}' (".intval($availableSizes[$closestSize])."px) for sitemaps");
+            $this->info("Auto-selected closest image size '{$closestSize}' (" . intval($availableSizes[$closestSize]) . 'px) for sitemaps');
 
             return $closestSize;
         }
@@ -353,20 +355,20 @@ class GenerateImageSitemap extends Command
 
     protected function generateImageSitemapIndex(int $numberOfFiles): string
     {
-        $settings = \RayzenAI\UrlManager\Models\GoogleSearchConsoleSetting::getSettings();
+        $settings = GoogleSearchConsoleSetting::getSettings();
         $siteUrl = rtrim($settings->frontend_url ?: url('/'), '/');
 
-        $xml = '<?xml version="1.0" encoding="UTF-8"?>'.PHP_EOL;
-        $xml .= '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'.PHP_EOL;
+        $xml = '<?xml version="1.0" encoding="UTF-8"?>' . PHP_EOL;
+        $xml .= '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' . PHP_EOL;
 
         for ($i = 0; $i < $numberOfFiles; $i++) {
-            $xml .= '  <sitemap>'.PHP_EOL;
-            $xml .= '    <loc>'.$siteUrl."/sitemap-images-{$i}.xml".'</loc>'.PHP_EOL;
-            $xml .= '    <lastmod>'.now()->toW3cString().'</lastmod>'.PHP_EOL;
-            $xml .= '  </sitemap>'.PHP_EOL;
+            $xml .= '  <sitemap>' . PHP_EOL;
+            $xml .= '    <loc>' . $siteUrl . "/sitemap-images-{$i}.xml" . '</loc>' . PHP_EOL;
+            $xml .= '    <lastmod>' . now()->toW3cString() . '</lastmod>' . PHP_EOL;
+            $xml .= '  </sitemap>' . PHP_EOL;
         }
 
-        $xml .= '</sitemapindex>'.PHP_EOL;
+        $xml .= '</sitemapindex>' . PHP_EOL;
 
         return $xml;
     }

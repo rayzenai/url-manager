@@ -20,7 +20,7 @@ class EditUrl extends EditRecord
     protected function mutateFormDataBeforeSave(array $data): array
     {
         $data['last_modified_at'] = now();
-        
+
         return $data;
     }
 

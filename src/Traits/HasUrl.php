@@ -107,9 +107,9 @@ trait HasUrl
 
         // Use slug if it exists
         if (property_exists($this, 'slug') || isset($this->slug)) {
-            $slug =  $this->slug;
+            $slug = $this->slug;
         }
-        
+
         // Fallback to a generic path using the model name and ID/slug
         return "{$modelName}/{$slug}";
     }
@@ -148,7 +148,7 @@ trait HasUrl
             } elseif ($model->shouldHaveUrl()) {
                 // Load the URL relationship if we need to check it
                 $model->load('url');
-                if (!$model->url) {
+                if (! $model->url) {
                     // Create URL if it doesn't exist but should
                     $model->createUrl();
                 }
@@ -205,6 +205,7 @@ trait HasUrl
     public function adminUrl(): string
     {
         $resourceName = str(class_basename($this))->plural()->lower();
+
         return "/admin/{$resourceName}/{$this->id}/edit";
     }
 
@@ -232,6 +233,7 @@ trait HasUrl
     public function isActiveForUrl(): bool
     {
         $activeField = $this->activeUrlField();
+
         return $this->{$activeField} ?? true;
     }
 
@@ -263,7 +265,7 @@ trait HasUrl
      */
     protected function updateUrlStatus(): void
     {
-        if (!$this->url) {
+        if (! $this->url) {
             return;
         }
 
@@ -278,7 +280,7 @@ trait HasUrl
      */
     protected function updateUrlSlug(): void
     {
-        if (!$this->url || !method_exists($this, 'webUrlPath')) {
+        if (! $this->url || ! method_exists($this, 'webUrlPath')) {
             return;
         }
 
@@ -316,7 +318,7 @@ trait HasUrl
     protected function getUrlType(): string
     {
         $className = class_basename($this);
-        
+
         $typeMap = [
             'Entity' => Url::TYPE_ENTITY,
             'Category' => Url::TYPE_CATEGORY,
@@ -357,12 +359,12 @@ trait HasUrl
         $fallbackField = $this->ogImageFallbackField();
 
         // Try og_image field first
-        if (!empty($this->{$ogImageField})) {
+        if (! empty($this->{$ogImageField})) {
             return $this->{$ogImageField};
         }
 
         // Try fallback field
-        if ($fallbackField && !empty($this->{$fallbackField})) {
+        if ($fallbackField && ! empty($this->{$fallbackField})) {
             return $this->{$fallbackField};
         }
 

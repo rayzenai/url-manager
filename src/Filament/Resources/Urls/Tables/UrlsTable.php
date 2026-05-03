@@ -25,7 +25,7 @@ class UrlsTable
                     ->sortable()
                     ->copyable()
                     ->limit(50),
-                
+
                 TextColumn::make('type')
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
@@ -34,7 +34,7 @@ class UrlsTable
                         'category' => 'info',
                         default => 'gray',
                     }),
-                
+
                 TextColumn::make('status')
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
@@ -43,33 +43,33 @@ class UrlsTable
                         Url::STATUS_INACTIVE => 'danger',
                         default => 'gray',
                     }),
-                
+
                 TextColumn::make('redirect_to')
                     ->label('Redirects To')
                     ->limit(30)
                     ->visible(fn ($record) => $record?->status === Url::STATUS_REDIRECT)
                     ->toggleable(isToggledHiddenByDefault: true),
-                
+
                 TextColumn::make('redirect_code')
                     ->label('Code')
                     ->visible(fn ($record) => $record?->status === Url::STATUS_REDIRECT)
                     ->toggleable(isToggledHiddenByDefault: true),
-                
+
                 TextColumn::make('visits')
                     ->numeric()
                     ->sortable()
                     ->toggleable(),
-                
+
                 TextColumn::make('last_visited_at')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
-                
+
                 TextColumn::make('last_modified_at')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
-                
+
                 TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
@@ -79,7 +79,7 @@ class UrlsTable
                 SelectFilter::make('type')
                     ->options(Url::getTypes())
                     ->placeholder('All Types'),
-                
+
                 SelectFilter::make('status')
                     ->options(Url::getStatuses())
                     ->placeholder('All Statuses'),

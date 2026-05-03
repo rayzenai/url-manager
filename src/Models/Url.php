@@ -10,16 +10,25 @@ use Illuminate\Support\Str;
 class Url extends Model
 {
     const STATUS_ACTIVE = 'active';
+
     const STATUS_REDIRECT = 'redirect';
+
     const STATUS_INACTIVE = 'inactive';
 
     const TYPE_ENTITY = 'entity';
+
     const TYPE_CATEGORY = 'category';
+
     const TYPE_SELLER = 'seller';
+
     const TYPE_MENU = 'menu';
+
     const TYPE_BRAND = 'brand';
+
     const TYPE_PAGE = 'page';
+
     const TYPE_BLOG = 'blog';
+
     const TYPE_REDIRECT = 'redirect';
 
     protected $fillable = [
@@ -80,7 +89,7 @@ class Url extends Model
     public static function findBySlug(string $slug, int $depth = 0)
     {
         $maxDepth = config('url-manager.max_redirect_depth', 5);
-        
+
         // Prevent infinite recursion
         if ($depth > $maxDepth) {
             return null;
@@ -105,7 +114,7 @@ class Url extends Model
      */
     public function getFullPath(): string
     {
-        return '/'.ltrim($this->slug, '/');
+        return '/' . ltrim($this->slug, '/');
     }
 
     /**
@@ -114,12 +123,12 @@ class Url extends Model
     public function getAbsoluteUrl(): string
     {
         // Use the configured frontend URL for sitemap generation
-        $settings = \RayzenAI\UrlManager\Models\GoogleSearchConsoleSetting::getSettings();
+        $settings = GoogleSearchConsoleSetting::getSettings();
         $baseUrl = $settings->frontend_url ?: url('/');
-        
+
         // Ensure base URL doesn't have trailing slash
         $baseUrl = rtrim($baseUrl, '/');
-        
+
         return $baseUrl . $this->getFullPath();
     }
 
@@ -131,14 +140,14 @@ class Url extends Model
         $baseSlug = Str::slug($model->name ?? $model->title ?? '');
 
         if (empty($baseSlug)) {
-            $baseSlug = Str::lower(class_basename($model)).'-'.$model->id;
+            $baseSlug = Str::lower(class_basename($model)) . '-' . $model->id;
         }
 
         $slug = $baseSlug;
         $count = 1;
 
         while (self::where('slug', $slug)->exists()) {
-            $slug = $baseSlug.'-'.$count;
+            $slug = $baseSlug . '-' . $count;
             $count++;
         }
 
@@ -162,12 +171,14 @@ class Url extends Model
             // Check if we've completed the circle back to start
             if ($current === $fromSlug) {
                 $visited[] = $current;
+
                 return $visited; // Circular chain detected
             }
 
             // Check if we've visited this slug before (indirect circle)
             if (in_array($current, $visited)) {
                 $visited[] = $current;
+
                 return $visited; // Circular chain detected
             }
 
@@ -176,7 +187,7 @@ class Url extends Model
                 ->where('status', self::STATUS_REDIRECT)
                 ->first();
 
-            if (!$url || !$url->redirect_to) {
+            if (! $url || ! $url->redirect_to) {
                 // End of chain, no circle
                 return null;
             }
@@ -210,6 +221,7 @@ class Url extends Model
                 'status' => self::STATUS_REDIRECT,
                 'type' => self::TYPE_REDIRECT,
             ]);
+
             return $existingUrl;
         }
 
@@ -230,10 +242,10 @@ class Url extends Model
      */
     public function recordVisit(): void
     {
-        if (!config('url-manager.track_visits', true)) {
+        if (! config('url-manager.track_visits', true)) {
             return;
         }
-        
+
         $this->increment('visits');
         $this->update(['last_visited_at' => now()]);
     }
@@ -324,7 +336,7 @@ class Url extends Model
     public function getSitemapPriority(): float
     {
         $priorities = config('url-manager.sitemap.priorities', []);
-        
+
         return $priorities[$this->type] ?? config('url-manager.sitemap.default_priority', 0.5);
     }
 

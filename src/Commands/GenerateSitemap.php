@@ -2,7 +2,9 @@
 
 namespace RayzenAI\UrlManager\Commands;
 
+use Carbon\Carbon;
 use Illuminate\Console\Command;
+use RayzenAI\UrlManager\Models\GoogleSearchConsoleSetting;
 use RayzenAI\UrlManager\Models\Url;
 
 class GenerateSitemap extends Command
@@ -92,22 +94,22 @@ class GenerateSitemap extends Command
     protected function generateXml($urls): string
     {
         // Get the configured frontend URL for sitemap generation
-        $settings = \RayzenAI\UrlManager\Models\GoogleSearchConsoleSetting::getSettings();
+        $settings = GoogleSearchConsoleSetting::getSettings();
         $siteUrl = rtrim($settings->frontend_url ?: url('/'), '/');
 
-        $xml = '<?xml version="1.0" encoding="UTF-8"?>'.PHP_EOL;
+        $xml = '<?xml version="1.0" encoding="UTF-8"?>' . PHP_EOL;
         $xml .= '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" ';
         $xml .= 'xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" ';
         $xml .= 'xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9 ';
-        $xml .= 'http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">'.PHP_EOL;
+        $xml .= 'http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">' . PHP_EOL;
 
         // Add homepage first
-        $xml .= '  <url>'.PHP_EOL;
-        $xml .= '    <loc>'.$siteUrl.'/'.'</loc>'.PHP_EOL;
-        $xml .= '    <lastmod>'.now()->toW3cString().'</lastmod>'.PHP_EOL;
-        $xml .= '    <changefreq>daily</changefreq>'.PHP_EOL;
-        $xml .= '    <priority>1.0</priority>'.PHP_EOL;
-        $xml .= '  </url>'.PHP_EOL;
+        $xml .= '  <url>' . PHP_EOL;
+        $xml .= '    <loc>' . $siteUrl . '/' . '</loc>' . PHP_EOL;
+        $xml .= '    <lastmod>' . now()->toW3cString() . '</lastmod>' . PHP_EOL;
+        $xml .= '    <changefreq>daily</changefreq>' . PHP_EOL;
+        $xml .= '    <priority>1.0</priority>' . PHP_EOL;
+        $xml .= '  </url>' . PHP_EOL;
 
         // Add custom routes from configuration
         $customRoutes = config('url-manager.sitemap.custom_routes', []);
@@ -120,19 +122,19 @@ class GenerateSitemap extends Command
                 continue;
             }
 
-            $xml .= '  <url>'.PHP_EOL;
-            $xml .= '    <loc>'.htmlspecialchars($url->getAbsoluteUrl()).'</loc>'.PHP_EOL;
+            $xml .= '  <url>' . PHP_EOL;
+            $xml .= '    <loc>' . htmlspecialchars($url->getAbsoluteUrl()) . '</loc>' . PHP_EOL;
 
             if ($url->last_modified_at) {
-                $xml .= '    <lastmod>'.$url->last_modified_at->toW3cString().'</lastmod>'.PHP_EOL;
+                $xml .= '    <lastmod>' . $url->last_modified_at->toW3cString() . '</lastmod>' . PHP_EOL;
             }
 
-            $xml .= '    <changefreq>'.$url->getSitemapChangefreq().'</changefreq>'.PHP_EOL;
-            $xml .= '    <priority>'.$url->getSitemapPriority().'</priority>'.PHP_EOL;
-            $xml .= '  </url>'.PHP_EOL;
+            $xml .= '    <changefreq>' . $url->getSitemapChangefreq() . '</changefreq>' . PHP_EOL;
+            $xml .= '    <priority>' . $url->getSitemapPriority() . '</priority>' . PHP_EOL;
+            $xml .= '  </url>' . PHP_EOL;
         }
 
-        $xml .= '</urlset>'.PHP_EOL;
+        $xml .= '</urlset>' . PHP_EOL;
 
         return $xml;
     }
@@ -146,15 +148,15 @@ class GenerateSitemap extends Command
 
         // Convert lastmod to Carbon instance if it's a string
         if (is_string($lastmod)) {
-            $lastmod = \Carbon\Carbon::parse($lastmod);
+            $lastmod = Carbon::parse($lastmod);
         }
 
-        $xml = '  <url>'.PHP_EOL;
-        $xml .= '    <loc>'.htmlspecialchars($siteUrl.'/'.$path).'</loc>'.PHP_EOL;
-        $xml .= '    <lastmod>'.$lastmod->toW3cString().'</lastmod>'.PHP_EOL;
-        $xml .= '    <changefreq>'.$changefreq.'</changefreq>'.PHP_EOL;
-        $xml .= '    <priority>'.$priority.'</priority>'.PHP_EOL;
-        $xml .= '  </url>'.PHP_EOL;
+        $xml = '  <url>' . PHP_EOL;
+        $xml .= '    <loc>' . htmlspecialchars($siteUrl . '/' . $path) . '</loc>' . PHP_EOL;
+        $xml .= '    <lastmod>' . $lastmod->toW3cString() . '</lastmod>' . PHP_EOL;
+        $xml .= '    <changefreq>' . $changefreq . '</changefreq>' . PHP_EOL;
+        $xml .= '    <priority>' . $priority . '</priority>' . PHP_EOL;
+        $xml .= '  </url>' . PHP_EOL;
 
         return $xml;
     }
@@ -162,20 +164,20 @@ class GenerateSitemap extends Command
     protected function generateSitemapIndex(int $numberOfFiles): string
     {
         // Get the configured frontend URL for sitemap generation
-        $settings = \RayzenAI\UrlManager\Models\GoogleSearchConsoleSetting::getSettings();
+        $settings = GoogleSearchConsoleSetting::getSettings();
         $siteUrl = rtrim($settings->frontend_url ?: url('/'), '/');
 
-        $xml = '<?xml version="1.0" encoding="UTF-8"?>'.PHP_EOL;
-        $xml .= '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'.PHP_EOL;
+        $xml = '<?xml version="1.0" encoding="UTF-8"?>' . PHP_EOL;
+        $xml .= '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' . PHP_EOL;
 
         for ($i = 0; $i < $numberOfFiles; $i++) {
-            $xml .= '  <sitemap>'.PHP_EOL;
-            $xml .= '    <loc>'.$siteUrl."/sitemap-{$i}.xml".'</loc>'.PHP_EOL;
-            $xml .= '    <lastmod>'.now()->toW3cString().'</lastmod>'.PHP_EOL;
-            $xml .= '  </sitemap>'.PHP_EOL;
+            $xml .= '  <sitemap>' . PHP_EOL;
+            $xml .= '    <loc>' . $siteUrl . "/sitemap-{$i}.xml" . '</loc>' . PHP_EOL;
+            $xml .= '    <lastmod>' . now()->toW3cString() . '</lastmod>' . PHP_EOL;
+            $xml .= '  </sitemap>' . PHP_EOL;
         }
 
-        $xml .= '</sitemapindex>'.PHP_EOL;
+        $xml .= '</sitemapindex>' . PHP_EOL;
 
         return $xml;
     }

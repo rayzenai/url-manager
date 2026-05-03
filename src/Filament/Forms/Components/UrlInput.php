@@ -84,7 +84,7 @@ class UrlInput extends TextInput
                                 'Brand' => "brand/{$value}",
                                 'Category' => $value,
                                 'Seller' => "sellers/{$value}",
-                                'Entity' => ($record && $record->category ? $record->category->slug : 'category')."/{$value}",
+                                'Entity' => ($record && $record->category ? $record->category->slug : 'category') . "/{$value}",
                                 default => $value,
                             };
                         }
@@ -100,6 +100,7 @@ class UrlInput extends TextInput
                         if ($existingUrl) {
                             $modelName = class_basename($existingUrl->urable_type ?? 'Record');
                             $fail("Already used by {$modelName} #{$existingUrl->urable_id}");
+
                             return;
                         }
 
@@ -121,6 +122,7 @@ class UrlInput extends TextInput
 
                                 if ($chain) {
                                     $fail('Cannot update slug: This would create a circular redirect chain: ' . implode(' → ', $chain));
+
                                     return;
                                 }
                             }
@@ -186,7 +188,7 @@ class UrlInput extends TextInput
 
         // Check uniqueness in URLs table
         while ($this->slugExists($slug, $record)) {
-            $slug = $baseSlug.'-'.$count;
+            $slug = $baseSlug . '-' . $count;
             $count++;
         }
 

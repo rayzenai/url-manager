@@ -3,6 +3,7 @@
 namespace RayzenAI\UrlManager\Facades;
 
 use Illuminate\Support\Facades\Facade;
+use RayzenAI\UrlManager\Services\UrlManagerService;
 
 /**
  * @method static void trackVisit(\Illuminate\Database\Eloquent\Model $model, ?int $userId = null, array $metadata = [])
@@ -14,7 +15,7 @@ use Illuminate\Support\Facades\Facade;
  * @method static \Illuminate\Support\Collection getRedirects()
  * @method static int getVisitCount(\Illuminate\Database\Eloquent\Model $model)
  *
- * @see \RayzenAI\UrlManager\Services\UrlManagerService
+ * @see UrlManagerService
  */
 class UrlManager extends Facade
 {

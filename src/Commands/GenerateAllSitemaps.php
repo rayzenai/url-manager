@@ -5,6 +5,8 @@ namespace RayzenAI\UrlManager\Commands;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use RayzenAI\UrlManager\Models\GoogleSearchConsoleSetting;
+use RayzenAI\UrlManager\Models\Url;
 
 class GenerateAllSitemaps extends Command
 {
@@ -14,35 +16,36 @@ class GenerateAllSitemaps extends Command
 
     public function handle()
     {
-        if (!config('url-manager.sitemap.enabled', true)) {
+        if (! config('url-manager.sitemap.enabled', true)) {
             $this->error('Sitemap generation is disabled in configuration.');
+
             return 1;
         }
 
         $this->info('Generating all sitemaps...');
-        
+
         $sitemaps = [];
-        
+
         // Generate URL sitemap
         $this->info('Generating URL sitemap...');
         Artisan::call('sitemap:generate');
-        $urlCount = \RayzenAI\UrlManager\Models\Url::active()->count();
+        $urlCount = Url::active()->count();
         $this->info("✓ Generated URL sitemap with {$urlCount} URLs");
         $sitemaps[] = 'sitemap.xml';
-        
+
         // Generate image sitemap if enabled and there are images
-        if (!config('url-manager.sitemap.images.enabled', true)) {
+        if (! config('url-manager.sitemap.images.enabled', true)) {
             $this->info('Image sitemap generation is disabled in configuration.');
             $imageCount = 0;
         } else {
-            
+
             $query = DB::table('media_metadata')
                 ->where('mime_type', 'LIKE', 'image/%')
                 ->whereNotNull('seo_title'); // Only count images with SEO titles
-            
+
             $imageCount = $query->count();
         }
-            
+
         if ($imageCount > 0) {
             $this->info("Generating image sitemap for {$imageCount} images...");
             Artisan::call('sitemap:generate-images');
@@ -51,19 +54,19 @@ class GenerateAllSitemaps extends Command
         } else {
             $this->info('No images found, skipping image sitemap.');
         }
-        
+
         // Generate video sitemap if enabled and there are videos
-        if (!config('url-manager.sitemap.videos.enabled', true)) {
+        if (! config('url-manager.sitemap.videos.enabled', true)) {
             $this->info('Video sitemap generation is disabled in configuration.');
             $videoCount = 0;
         } else {
-        
+
             $query = DB::table('media_metadata')
                 ->where('mime_type', 'LIKE', 'video/%');
-            
+
             $videoCount = $query->count();
         }
-            
+
         if ($videoCount > 0) {
             $this->info("Generating video sitemap for {$videoCount} videos...");
             Artisan::call('sitemap:generate-videos');
@@ -72,12 +75,12 @@ class GenerateAllSitemaps extends Command
         } else {
             $this->info('No videos found, skipping video sitemap.');
         }
-        
+
         // Create master sitemap index
         if (count($sitemaps) > 1) {
             $this->generateMasterSitemapIndex($sitemaps);
         }
-        
+
         $this->info('');
         $this->info('All sitemaps generated successfully!');
         $this->info('');
@@ -88,33 +91,33 @@ class GenerateAllSitemaps extends Command
         $this->info('');
         $this->info('Generated files:');
         foreach ($sitemaps as $sitemap) {
-            $this->info("- " . public_path($sitemap));
+            $this->info('- ' . public_path($sitemap));
         }
-        
+
         return 0;
     }
-    
+
     protected function generateMasterSitemapIndex(array $sitemaps): void
     {
         // Get the configured frontend URL for sitemap generation
-        $settings = \RayzenAI\UrlManager\Models\GoogleSearchConsoleSetting::getSettings();
+        $settings = GoogleSearchConsoleSetting::getSettings();
         $siteUrl = rtrim($settings->frontend_url ?: url('/'), '/');
-        
+
         $xml = '<?xml version="1.0" encoding="UTF-8"?>' . PHP_EOL;
         $xml .= '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' . PHP_EOL;
-        
+
         foreach ($sitemaps as $sitemap) {
             $xml .= '  <sitemap>' . PHP_EOL;
             $xml .= '    <loc>' . $siteUrl . '/' . $sitemap . '</loc>' . PHP_EOL;
             $xml .= '    <lastmod>' . now()->toW3cString() . '</lastmod>' . PHP_EOL;
             $xml .= '  </sitemap>' . PHP_EOL;
         }
-        
+
         $xml .= '</sitemapindex>' . PHP_EOL;
-        
+
         $path = public_path('sitemap-index.xml');
         file_put_contents($path, $xml);
-        
+
         $this->info("Master sitemap index saved to: {$path}");
     }
 }

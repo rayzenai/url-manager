@@ -5,7 +5,6 @@ namespace RayzenAI\UrlManager\Filament\Resources\Urls\Schemas;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Grid;
-use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Schema;
@@ -27,17 +26,16 @@ class UrlForm
                                         ->required()
                                         ->unique(ignoreRecord: true)
                                         ->helperText('The URL path (e.g., "products/my-product")'),
-                                    
+
                                     Select::make('type')
                                         ->label('URL Type')
                                         ->options(Url::getTypes())
                                         ->required()
                                         ->reactive()
-                                        ->afterStateUpdated(fn ($state, callable $set) => 
-                                            $state === 'redirect' ? $set('status', Url::STATUS_REDIRECT) : null
+                                        ->afterStateUpdated(fn ($state, callable $set) => $state === 'redirect' ? $set('status', Url::STATUS_REDIRECT) : null
                                         ),
                                 ]),
-                            
+
                             Grid::make(2)
                                 ->schema([
                                     Select::make('status')
@@ -46,19 +44,19 @@ class UrlForm
                                         ->required()
                                         ->default(Url::STATUS_ACTIVE)
                                         ->reactive(),
-                                    
+
                                     TextInput::make('urable_type')
                                         ->label('Model Type')
                                         ->helperText('Full class name of the related model')
                                         ->visible(fn ($get) => $get('type') !== 'redirect'),
                                 ]),
-                            
+
                             TextInput::make('urable_id')
                                 ->label('Model ID')
                                 ->numeric()
                                 ->visible(fn ($get) => $get('type') !== 'redirect'),
                         ]),
-                    
+
                     Tab::make('Redirect Settings')
                         ->visible(fn ($get) => $get('status') === Url::STATUS_REDIRECT || $get('type') === 'redirect')
                         ->schema([
@@ -66,7 +64,7 @@ class UrlForm
                                 ->label('Redirect To')
                                 ->required(fn ($get) => $get('status') === Url::STATUS_REDIRECT)
                                 ->helperText('The target URL slug or full URL'),
-                            
+
                             Select::make('redirect_code')
                                 ->label('Redirect Code')
                                 ->options([
@@ -78,7 +76,7 @@ class UrlForm
                                 ->default(301)
                                 ->required(fn ($get) => $get('status') === Url::STATUS_REDIRECT),
                         ]),
-                    
+
                     Tab::make('Statistics')
                         ->schema([
                             Grid::make(2)
@@ -88,12 +86,12 @@ class UrlForm
                                         ->numeric()
                                         ->disabled()
                                         ->default(0),
-                                    
+
                                     TextInput::make('last_visited_at')
                                         ->label('Last Visited')
                                         ->disabled(),
                                 ]),
-                            
+
                             TextInput::make('last_modified_at')
                                 ->label('Last Modified')
                                 ->disabled(),

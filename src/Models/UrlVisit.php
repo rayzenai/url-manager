@@ -13,7 +13,7 @@ class UrlVisit extends Model
      * Disable updated_at timestamp
      */
     const UPDATED_AT = null;
-    
+
     protected $fillable = [
         'url_id',
         'ip_address',
@@ -45,6 +45,7 @@ class UrlVisit extends Model
     public function user(): BelongsTo
     {
         $userModel = config('url-manager.user_model', 'App\Models\User');
+
         return $this->belongsTo($userModel);
     }
 
@@ -61,7 +62,7 @@ class UrlVisit extends Model
         // X-Forwarded-For format is "client, proxy1, proxy2" — leftmost is the originating client
         $first = trim(explode(',', $ipAddress)[0]);
 
-        if ($first === '' || !filter_var($first, FILTER_VALIDATE_IP)) {
+        if ($first === '' || ! filter_var($first, FILTER_VALIDATE_IP)) {
             return null;
         }
 
@@ -81,7 +82,7 @@ class UrlVisit extends Model
         // Parse the URL
         $parsedUrl = parse_url($referer);
 
-        if ($parsedUrl === false || !isset($parsedUrl['host'])) {
+        if ($parsedUrl === false || ! isset($parsedUrl['host'])) {
             // Invalid URL, truncate and return
             return substr($referer, 0, 255);
         }
@@ -92,15 +93,14 @@ class UrlVisit extends Model
             parse_str($parsedUrl['query'], $queryParams);
 
             // Remove Facebook click ID (fbclid) completely
-            unset($queryParams['fbclid']);
-
-            // Remove UTM parameters that bloat URLs
-            unset(
+            unset($queryParams['fbclid'],
                 $queryParams['utm_campaign'],
                 $queryParams['utm_id'],
                 $queryParams['utm_content'],
                 $queryParams['utm_term']
             );
+
+            // Remove UTM parameters that bloat URLs
 
             // Keep only utm_source and utm_medium as they're most useful
         }
@@ -125,7 +125,7 @@ class UrlVisit extends Model
         }
 
         // Add cleaned query string if params remain
-        if (!empty($queryParams)) {
+        if (! empty($queryParams)) {
             $cleanUrl .= '?' . http_build_query($queryParams);
         }
 
@@ -156,8 +156,8 @@ class UrlVisit extends Model
 
         // Remove these from metadata to avoid duplication
         unset($metadata['user_agent'], $metadata['ip'], $metadata['referer']);
-        
-        $agent = new Agent();
+
+        $agent = new Agent;
         if ($userAgent) {
             $agent->setUserAgent($userAgent);
         }
@@ -185,14 +185,14 @@ class UrlVisit extends Model
         // Check for mobile app source parameter first (for API calls)
         $source = request()->input('source');
         $isMobileApp = in_array($source, ['android', 'ios']);
-        
+
         // Parse user agent for browser/device info
         if ($isMobileApp) {
             // API call from mobile app
             $data['device'] = 'mobile';
             $data['browser'] = ucfirst($source) . ' App';
             $data['browser_version'] = '';
-            
+
             // Store source in metadata
             $data['meta'] = array_merge($data['meta'] ?? [], ['source' => $source]);
         } else {
@@ -220,9 +220,9 @@ class UrlVisit extends Model
                     $data['device'] = 'unknown';
                 }
             }
-            
+
             // Only set browser info if not already set
-            if (!isset($data['browser'])) {
+            if (! isset($data['browser'])) {
                 $data['browser'] = substr($agent->browser() ?: 'Unknown', 0, 50);
                 $data['browser_version'] = substr($agent->version($agent->browser()) ?: '', 0, 20);
             }
@@ -236,17 +236,17 @@ class UrlVisit extends Model
      */
     public function getCountryFlagAttribute(): ?string
     {
-        if (!$this->country_code) {
+        if (! $this->country_code) {
             return null;
         }
-        
+
         // Convert country code to flag emoji using regional indicator symbols
         $flag = '';
         $code = strtoupper($this->country_code);
         for ($i = 0; $i < strlen($code); $i++) {
             $flag .= mb_chr(ord($code[$i]) + 127397, 'UTF-8');
         }
-        
+
         return $flag;
     }
 
@@ -255,10 +255,10 @@ class UrlVisit extends Model
      */
     public function getCountryNameAttribute(): ?string
     {
-        if (!$this->country_code) {
+        if (! $this->country_code) {
             return null;
         }
-        
+
         // Common country codes - expand as needed
         $countries = [
             'US' => 'United States',
@@ -311,7 +311,7 @@ class UrlVisit extends Model
             'ZA' => 'South Africa',
             'LK' => 'Sri Lanka',
         ];
-        
+
         return $countries[strtoupper($this->country_code)] ?? strtoupper($this->country_code);
     }
 

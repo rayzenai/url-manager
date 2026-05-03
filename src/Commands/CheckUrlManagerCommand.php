@@ -4,6 +4,7 @@ namespace RayzenAI\UrlManager\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Schema;
+use RayzenAI\UrlManager\Models\Url;
 use RayzenAI\UrlManager\Traits\HasUrl;
 
 class CheckUrlManagerCommand extends Command
@@ -17,13 +18,15 @@ class CheckUrlManagerCommand extends Command
         $modelClass = $this->argument('model');
 
         if ($modelClass) {
-            if (!class_exists($modelClass)) {
+            if (! class_exists($modelClass)) {
                 $this->error("Model class {$modelClass} does not exist.");
+
                 return 1;
             }
 
-            if (!in_array(HasUrl::class, class_uses_recursive($modelClass))) {
+            if (! in_array(HasUrl::class, class_uses_recursive($modelClass))) {
                 $this->error("Model {$modelClass} does not use the HasUrl trait.");
+
                 return 1;
             }
 
@@ -42,8 +45,9 @@ class CheckUrlManagerCommand extends Command
 
         $modelsPath = app_path('Models');
 
-        if (!is_dir($modelsPath)) {
+        if (! is_dir($modelsPath)) {
             $this->error('Models directory not found.');
+
             return;
         }
 
@@ -53,11 +57,11 @@ class CheckUrlManagerCommand extends Command
         foreach ($modelFiles as $file) {
             $className = 'App\\Models\\' . basename($file, '.php');
 
-            if (!class_exists($className)) {
+            if (! class_exists($className)) {
                 continue;
             }
 
-            if (!in_array(HasUrl::class, class_uses_recursive($className))) {
+            if (! in_array(HasUrl::class, class_uses_recursive($className))) {
                 continue;
             }
 
@@ -69,6 +73,7 @@ class CheckUrlManagerCommand extends Command
             $this->newLine();
             $this->line('💡 Add the HasUrl trait to your models:');
             $this->line('   use RayzenAI\UrlManager\Traits\HasUrl;');
+
             return;
         }
 
@@ -99,7 +104,7 @@ class CheckUrlManagerCommand extends Command
         $testModel = $modelClass::first();
 
         // Check 1: webUrlPath() method
-        if (!method_exists($model, 'webUrlPath')) {
+        if (! method_exists($model, 'webUrlPath')) {
             $issues[] = '❌ Missing webUrlPath() method';
         } else {
             if ($testModel) {
@@ -110,14 +115,14 @@ class CheckUrlManagerCommand extends Command
                     $issues[] = "❌ webUrlPath() throws error: {$e->getMessage()}";
                 }
             } else {
-                $successes[] = "✅ webUrlPath() method exists (no data to test)";
+                $successes[] = '✅ webUrlPath() method exists (no data to test)';
             }
         }
 
         // Check 2: is_active or custom active field
         $activeField = method_exists($model, 'activeUrlField') ? $model->activeUrlField() : 'is_active';
 
-        if (!Schema::hasColumn($model->getTable(), $activeField)) {
+        if (! Schema::hasColumn($model->getTable(), $activeField)) {
             $issues[] = "❌ Missing '{$activeField}' column in database";
         } else {
             $successes[] = "✅ Active field '{$activeField}' exists";
@@ -128,16 +133,16 @@ class CheckUrlManagerCommand extends Command
             $viewCountColumn = $model->getViewCountColumn();
 
             if ($viewCountColumn) {
-                if (!Schema::hasColumn($model->getTable(), $viewCountColumn)) {
+                if (! Schema::hasColumn($model->getTable(), $viewCountColumn)) {
                     $issues[] = "❌ View count column '{$viewCountColumn}' defined but doesn't exist in database";
                 } else {
                     $successes[] = "✅ View count tracking enabled → '{$viewCountColumn}' column";
                 }
             } else {
-                $warnings[] = "⚠️  getViewCountColumn() returns null - view counting disabled";
+                $warnings[] = '⚠️  getViewCountColumn() returns null - view counting disabled';
             }
         } else {
-            $warnings[] = "⚠️  No getViewCountColumn() method - view counting not implemented";
+            $warnings[] = '⚠️  No getViewCountColumn() method - view counting not implemented';
         }
 
         // Check 4: ogTags() for SEO
@@ -145,28 +150,28 @@ class CheckUrlManagerCommand extends Command
             if ($testModel) {
                 try {
                     $ogTags = $testModel->ogTags();
-                    if (is_array($ogTags) && !empty($ogTags)) {
-                        $successes[] = "✅ ogTags() implemented with " . count($ogTags) . " tag(s)";
+                    if (is_array($ogTags) && ! empty($ogTags)) {
+                        $successes[] = '✅ ogTags() implemented with ' . count($ogTags) . ' tag(s)';
                     } else {
-                        $warnings[] = "⚠️  ogTags() returns empty array";
+                        $warnings[] = '⚠️  ogTags() returns empty array';
                     }
                 } catch (\Exception $e) {
                     $warnings[] = "⚠️  ogTags() throws error: {$e->getMessage()}";
                 }
             } else {
-                $successes[] = "✅ ogTags() method exists (no data to test)";
+                $successes[] = '✅ ogTags() method exists (no data to test)';
             }
         } else {
-            $warnings[] = "⚠️  No ogTags() method - missing SEO metadata";
+            $warnings[] = '⚠️  No ogTags() method - missing SEO metadata';
         }
 
         // Check 5: getSeoMetadata() for advanced SEO
         if (method_exists($model, 'getSeoMetadata')) {
-            $successes[] = "✅ getSeoMetadata() implemented";
+            $successes[] = '✅ getSeoMetadata() implemented';
         }
 
         // Check 6: Existing URL records
-        $urlCount = \RayzenAI\UrlManager\Models\Url::where('urable_type', $modelClass)->count();
+        $urlCount = Url::where('urable_type', $modelClass)->count();
         $modelCount = $modelClass::count();
 
         if ($urlCount === 0 && $modelCount > 0) {
@@ -194,8 +199,8 @@ class CheckUrlManagerCommand extends Command
 
         // Summary
         if (empty($issues) && empty($warnings)) {
-            $this->line("  <fg=green>🎉 Perfect configuration!</>");
-        } elseif (!empty($issues)) {
+            $this->line('  <fg=green>🎉 Perfect configuration!</>');
+        } elseif (! empty($issues)) {
             $issueCount = count($issues);
             $this->line("  <fg=red>⚠️  {$issueCount} critical issue(s) found</>");
         }

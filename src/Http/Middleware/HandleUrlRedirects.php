@@ -32,11 +32,11 @@ class HandleUrlRedirects
         // If a redirect exists, perform it
         if ($url && $url->redirect_to) {
             $redirectCode = $url->redirect_code ?? 301;
-            $redirectPath = '/'.ltrim($url->redirect_to, '/');
+            $redirectPath = '/' . ltrim($url->redirect_to, '/');
 
             // Preserve query string if present
             if ($request->getQueryString()) {
-                $redirectPath .= '?'.$request->getQueryString();
+                $redirectPath .= '?' . $request->getQueryString();
             }
 
             return redirect($redirectPath, $redirectCode);
