@@ -49,6 +49,27 @@ class UrlVisit extends Model
     }
 
     /**
+     * Extract the client IP from a possibly comma-separated chain (X-Forwarded-For style)
+     * and ensure it fits the 45-char column. Returns null for invalid IPs.
+     */
+    protected static function sanitizeIpAddress(?string $ipAddress): ?string
+    {
+        if (empty($ipAddress)) {
+            return null;
+        }
+
+        // X-Forwarded-For format is "client, proxy1, proxy2" — leftmost is the originating client
+        $first = trim(explode(',', $ipAddress)[0]);
+
+        if ($first === '' || !filter_var($first, FILTER_VALIDATE_IP)) {
+            return null;
+        }
+
+        // Final safety net for the varchar(45) column
+        return substr($first, 0, 45);
+    }
+
+    /**
      * Sanitize referer URL by removing tracking parameters and ensuring it fits database constraints
      */
     protected static function sanitizeReferer(?string $referer): ?string
@@ -125,6 +146,10 @@ class UrlVisit extends Model
         $userAgent = $metadata['user_agent'] ?? request()->userAgent();
         $ipAddress = $metadata['ip'] ?? request()->ip();
         $referer = $metadata['referer'] ?? request()->header('referer');
+
+        // Callers sometimes pass an X-Forwarded-For chain ("client, proxy1") which overflows
+        // the varchar(45) column; reduce to the originating client IP and validate.
+        $ipAddress = self::sanitizeIpAddress($ipAddress);
 
         // Sanitize referer to remove tracking parameters and ensure it fits DB constraints
         $referer = self::sanitizeReferer($referer);
